@@ -30,18 +30,18 @@ def load_data(path: str) -> pd.DataFrame:
         if c in df.columns:
             df[c] = df[c].astype("string")
 
-    # normalize BMI labels (kept for consistency though BMI chart removed)
+    # normalize BMI labels (even if BMI chart is removed)
     if "BMI Category" in df.columns:
         df["BMI Category"] = (df["BMI Category"]
                               .str.replace("Normal Weight", "Normal", case=False)
                               .str.title())
 
-    # (Optional) split blood pressure (chart removed per request, but safe to keep parsing)
+    # optional: split blood pressure (chart removed but parsing is safe)
     if "Blood Pressure" in df.columns:
         bp = df["Blood Pressure"].str.extract(r"(?P<Systolic>\d+)\s*/\s*(?P<Diastolic>\d+)")
         df[["Systolic", "Diastolic"]] = bp.astype("float")
 
-    # derived flag (not plotted now, but might be useful)
+    # derived flag
     if "Sleep Duration" in df.columns:
         df["Short Sleep (<6h)"] = (df["Sleep Duration"] < 6).map({True: "Yes", False: "No"})
     return df
@@ -68,11 +68,8 @@ occ_sel = st.sidebar.multiselect("Occupation",
     options=sorted(df["Occupation"].dropna().unique().tolist()),
     default=sorted(df["Occupation"].dropna().unique().tolist()))
 
-bmi_sel = st.sidebar.multiselect("BMI Category",
-    options=sorted(df["BMI Category"].dropna().unique().tolist())
-            if "BMI Category" in df.columns else [],
-    default=sorted(df["BMI Category"].dropna().unique().tolist())
-            if "BMI Category" in df.columns else [])
+bmi_options = sorted(df["BMI Category"].dropna().unique().tolist()) if "BMI Category" in df.columns else []
+bmi_sel = st.sidebar.multiselect("BMI Category", options=bmi_options, default=bmi_options)
 
 disorder_sel = st.sidebar.multiselect("Sleep Disorder",
     options=sorted(df["Sleep Disorder"].dropna().unique().tolist()),
@@ -83,13 +80,13 @@ fdf = df[
     df["Age"].between(age_range[0], age_range[1]) &
     df["Gender"].isin(gender_sel) &
     df["Occupation"].isin(occ_sel) &
-    (df["BMI Category"].isin(bmi_sel) if "BMI Category" in df.columns and len(bmi_sel)>0 else True) &
+    ((df["BMI Category"].isin(bmi_sel)) if ("BMI Category" in df.columns and len(bmi_sel)>0) else True) &
     df["Sleep Disorder"].isin(disorder_sel)
 ].copy()
 
 st.sidebar.metric("Rows after filter", len(fdf))
 
-# ------------------ Tabs: Overview / Visualizations / Data Table / Conclusion ------------------
+# ------------------ Tabs ------------------
 tab_overview, tab_viz, tab_table, tab_end = st.tabs(
     ["Overview", "Visualizations", "Data Table", "Conclusion"]
 )
@@ -123,14 +120,22 @@ with tab_overview:
     st.plotly_chart(px.bar(occ_counts, x="Occupation", y="Count", text="Count"),
                     use_container_width=True)
 
+    # >>> Sleep Disorder charts ONLY here <<<
+    st.markdown("**Sleep Disorder Breakdown**")
+    disorder_count = (
+        fdf[fdf["Sleep Disorder"] != "None"]["Sleep Disorder"]
+        .value_counts()
+        .rename_axis("Disorder").reset_index(name="Count")
+    )
+    st.plotly_chart(
+        px.bar(disorder_count, x="Disorder", y="Count", text="Count")
+          .update_traces(textposition="outside"),
+        use_container_width=True
+    )
+
 # ================== VISUALIZATIONS ==================
 with tab_viz:
     st.subheader("Core Visualizations")
-
-    # NOTE: Removed per request: Sleep Disorder charts, Correlation Heatmap,
-    # BMI Category, Blood Pressure.
-    # Kept: Sleep Duration dist, Sleep vs Quality, Age vs Sleep,
-    # Activity vs Quality, Stress vs Sleep, Heart Rate dist.
 
     # 1) Sleep Duration Distribution
     st.markdown("**Sleep Duration Distribution**")
@@ -139,35 +144,43 @@ with tab_viz:
 
     c1, c2 = st.columns(2)
     with c1:
-        # 2) Sleep Duration vs Quality of Sleep
+        # 2) Sleep Duration vs Quality of Sleep (colored by Gender to avoid Disorder charts here)
         st.markdown("**Sleep Duration vs Quality of Sleep**")
-        fig2 = px.scatter(fdf, x="Sleep Duration", y="Quality of Sleep",
-                          color="Gender",
-                          hover_data=["Age","Occupation","BMI Category","Sleep Disorder"],
-                          trendline="ols")
+        fig2 = px.scatter(
+            fdf, x="Sleep Duration", y="Quality of Sleep",
+            color="Gender",
+            hover_data=["Age","Occupation","BMI Category","Sleep Disorder"],
+            trendline="ols"
+        )
         st.plotly_chart(fig2, use_container_width=True)
     with c2:
-        # 3) Age vs Sleep Duration
+        # 3) Age vs Sleep Duration (colored by Gender)
         st.markdown("**Age vs Sleep Duration**")
-        fig3 = px.scatter(fdf, x="Age", y="Sleep Duration",
-                          color="Sleep Disorder",
-                          hover_data=["Gender","BMI Category","Occupation"])
+        fig3 = px.scatter(
+            fdf, x="Age", y="Sleep Duration",
+            color="Gender",
+            hover_data=["Occupation","BMI Category"]
+        )
         st.plotly_chart(fig3, use_container_width=True)
 
     c3, c4 = st.columns(2)
     with c3:
-        # 4) Physical Activity vs Quality
+        # 4) Physical Activity vs Quality (colored by Gender)
         st.markdown("**Physical Activity vs Quality of Sleep**")
-        fig4 = px.scatter(fdf, x="Physical Activity Level", y="Quality of Sleep",
-                          color="Gender",
-                          hover_data=["Age","BMI Category"], trendline="ols")
+        fig4 = px.scatter(
+            fdf, x="Physical Activity Level", y="Quality of Sleep",
+            color="Gender",
+            hover_data=["Age","BMI Category"], trendline="ols"
+        )
         st.plotly_chart(fig4, use_container_width=True)
     with c4:
-        # 5) Stress vs Sleep Duration
+        # 5) Stress vs Sleep Duration (colored by Gender)
         st.markdown("**Stress Level vs Sleep Duration**")
-        fig5 = px.scatter(fdf, x="Stress Level", y="Sleep Duration",
-                          color="Sleep Disorder",
-                          hover_data=["Age","Gender","BMI Category"], trendline="ols")
+        fig5 = px.scatter(
+            fdf, x="Stress Level", y="Sleep Duration",
+            color="Gender",
+            hover_data=["Age","BMI Category"], trendline="ols"
+        )
         st.plotly_chart(fig5, use_container_width=True)
 
     # 6) Heart Rate Distribution
@@ -175,78 +188,30 @@ with tab_viz:
     fig6 = px.histogram(fdf, x="Heart Rate", nbins=25)
     st.plotly_chart(fig6, use_container_width=True)
 
-# --- Average Sleep by Occupation (clean) ---
-st.markdown("**Average Sleep by Occupation**")
-
-# 1) احسب المتوسط ورتّب تنازليًا
-occ_mean = (
-    fdf.groupby("Occupation", as_index=False)["Sleep Duration"]
-       .mean()
-       .rename(columns={"Sleep Duration": "Avg Sleep (h)"})
-       .sort_values("Avg Sleep (h)", ascending=False)
-    # .head(12)  # اختياري: لو تبغى أعلى 12 فقط
-)
-
-# 2) ارسم بشكل مرتب مع أرقام مقربة
-fig_occ = px.bar(
-    occ_mean, x="Occupation", y="Avg Sleep (h)",
-    text="Avg Sleep (h)"
-)
-
-# 3) تنسيقات: تقريب الأرقام، تدوير المحور، إلغاء الليجند
-fig_occ.update_traces(
-    texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False
-)
-fig_occ.update_layout(
-    yaxis_title="Average Sleep Duration (hours)",
-    xaxis_title="Occupation",
-    xaxis_tickangle=-35,
-    height=460,
-    margin=dict(t=40, r=20, b=90, l=60),
-    showlegend=False
-)
-
-# 4) (اختياري) قفل التكبير/السحب للموبايل
-fig_occ.update_xaxes(fixedrange=True)
-fig_occ.update_yaxes(fixedrange=True)
-
-st.plotly_chart(fig_occ, use_container_width=True)
-
-# 8) Sleep Disorder Breakdown
-st.markdown("**Sleep Disorder Breakdown**")
-
-# حساب عدد كل اضطراب
-disorder_count = (
-    fdf[fdf["Sleep Disorder"] != "None"]["Sleep Disorder"]
-    .value_counts()
-    .rename_axis("Disorder")
-    .reset_index(name="Count")
-)
-
-fig_disorder = px.bar(
-    disorder_count,
-    x="Disorder",
-    y="Count",
-    text="Count",
-    color="Disorder",
-    color_discrete_sequence=px.colors.qualitative.Set2
-)
-
-fig_disorder.update_traces(
-    textposition="outside",
-    texttemplate="%{text:.0f}"
-)
-
-fig_disorder.update_layout(
-    yaxis_title="Count",
-    xaxis_title="Disorder",
-    showlegend=False,
-    height=450,
-    margin=dict(t=40, r=20, b=70, l=60)
-)
-
-st.plotly_chart(fig_disorder, use_container_width=True)
-
+    # 7) Average Sleep by Occupation (Horizontal bar for readability)
+    st.markdown("**Average Sleep Duration by Occupation**")
+    occ_mean = (
+        fdf.groupby("Occupation", as_index=False)["Sleep Duration"]
+           .mean()
+           .rename(columns={"Sleep Duration": "Avg Sleep (h)"})
+           .sort_values("Avg Sleep (h)", ascending=False)
+    )
+    fig_occ = px.bar(
+        occ_mean, y="Occupation", x="Avg Sleep (h)", text="Avg Sleep (h)",
+        orientation="h"
+    )
+    fig_occ.update_traces(texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False)
+    fig_occ.update_layout(
+        xaxis_title="Average Sleep Duration (hours)",
+        yaxis_title="Occupation",
+        height=700,  # أطول قليلًا عشان الأسماء
+        margin=dict(t=40, r=20, b=40, l=120),
+        showlegend=False
+    )
+    # قفل التكبير للموبايل
+    fig_occ.update_xaxes(fixedrange=True)
+    fig_occ.update_yaxes(fixedrange=True)
+    st.plotly_chart(fig_occ, use_container_width=True)
 
 # ================== DATA TABLE ==================
 with tab_table:
