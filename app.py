@@ -174,6 +174,25 @@ with tab_viz:
     st.markdown("**Heart Rate Distribution**")
     fig6 = px.histogram(fdf, x="Heart Rate", nbins=25)
     st.plotly_chart(fig6, use_container_width=True)
+# 7) Average Sleep by Occupation
+st.markdown("**Average Sleep Duration by Occupation**")
+occ_sleep = (fdf.groupby("Occupation")["Sleep Duration"]
+             .mean()
+             .sort_values(ascending=False)
+             .reset_index())
+
+fig_occ_sleep = px.bar(occ_sleep,
+                       x="Occupation",
+                       y="Sleep Duration",
+                       text="Sleep Duration",
+                       title="Average Sleep Hours by Occupation")
+
+fig_occ_sleep.update_layout(xaxis_title="Occupation",
+                            yaxis_title="Average Sleep Duration (Hours)",
+                            xaxis_tickangle=-45)
+
+st.plotly_chart(fig_occ_sleep, use_container_width=True)
+
 
 # ================== DATA TABLE ==================
 with tab_table:
