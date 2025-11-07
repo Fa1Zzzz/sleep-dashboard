@@ -174,25 +174,43 @@ with tab_viz:
     st.markdown("**Heart Rate Distribution**")
     fig6 = px.histogram(fdf, x="Heart Rate", nbins=25)
     st.plotly_chart(fig6, use_container_width=True)
-# 7) Average Sleep by Occupation
-st.markdown("**Average Sleep Duration by Occupation**")
-occ_sleep = (fdf.groupby("Occupation")["Sleep Duration"]
-             .mean()
-             .sort_values(ascending=False)
-             .reset_index())
 
-fig_occ_sleep = px.bar(occ_sleep,
-                       x="Occupation",
-                       y="Sleep Duration",
-                       text="Sleep Duration",
-                       title="Average Sleep Hours by Occupation")
+# --- Average Sleep by Occupation (clean) ---
+st.markdown("**Average Sleep by Occupation**")
 
-fig_occ_sleep.update_layout(xaxis_title="Occupation",
-                            yaxis_title="Average Sleep Duration (Hours)",
-                            xaxis_tickangle=-45)
+# 1) احسب المتوسط ورتّب تنازليًا
+occ_mean = (
+    fdf.groupby("Occupation", as_index=False)["Sleep Duration"]
+       .mean()
+       .rename(columns={"Sleep Duration": "Avg Sleep (h)"})
+       .sort_values("Avg Sleep (h)", ascending=False)
+    # .head(12)  # اختياري: لو تبغى أعلى 12 فقط
+)
 
-st.plotly_chart(fig_occ_sleep, use_container_width=True)
+# 2) ارسم بشكل مرتب مع أرقام مقربة
+fig_occ = px.bar(
+    occ_mean, x="Occupation", y="Avg Sleep (h)",
+    text="Avg Sleep (h)"
+)
 
+# 3) تنسيقات: تقريب الأرقام، تدوير المحور، إلغاء الليجند
+fig_occ.update_traces(
+    texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False
+)
+fig_occ.update_layout(
+    yaxis_title="Average Sleep Duration (hours)",
+    xaxis_title="Occupation",
+    xaxis_tickangle=-35,
+    height=460,
+    margin=dict(t=40, r=20, b=90, l=60),
+    showlegend=False
+)
+
+# 4) (اختياري) قفل التكبير/السحب للموبايل
+fig_occ.update_xaxes(fixedrange=True)
+fig_occ.update_yaxes(fixedrange=True)
+
+st.plotly_chart(fig_occ, use_container_width=True)
 
 # ================== DATA TABLE ==================
 with tab_table:
