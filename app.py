@@ -120,18 +120,29 @@ with tab_overview:
     st.plotly_chart(px.bar(occ_counts, x="Occupation", y="Count", text="Count"),
                     use_container_width=True)
 
-    # >>> Sleep Disorder charts ONLY here <<<
-    st.markdown("**Sleep Disorder Breakdown**")
-    disorder_count = (
-        fdf[fdf["Sleep Disorder"] != "None"]["Sleep Disorder"]
-        .value_counts()
-        .rename_axis("Disorder").reset_index(name="Count")
+    # >>> Moved here: Average Sleep Duration by Occupation <<<
+    st.markdown("**Average Sleep Duration by Occupation**")
+    occ_mean = (
+        fdf.groupby("Occupation", as_index=False)["Sleep Duration"]
+           .mean()
+           .rename(columns={"Sleep Duration": "Avg Sleep (h)"})
+           .sort_values("Avg Sleep (h)", ascending=False)
     )
-    st.plotly_chart(
-        px.bar(disorder_count, x="Disorder", y="Count", text="Count")
-          .update_traces(textposition="outside"),
-        use_container_width=True
+    fig_occ = px.bar(
+        occ_mean, y="Occupation", x="Avg Sleep (h)", text="Avg Sleep (h)",
+        orientation="h"
     )
+    fig_occ.update_traces(texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False)
+    fig_occ.update_layout(
+        xaxis_title="Average Sleep Duration (hours)",
+        yaxis_title="Occupation",
+        height=700,
+        margin=dict(t=40, r=20, b=40, l=120),
+        showlegend=False
+    )
+    fig_occ.update_xaxes(fixedrange=True)
+    fig_occ.update_yaxes(fixedrange=True)
+    st.plotly_chart(fig_occ, use_container_width=True)
 
 # ================== VISUALIZATIONS ==================
 with tab_viz:
@@ -144,7 +155,7 @@ with tab_viz:
 
     c1, c2 = st.columns(2)
     with c1:
-        # 2) Sleep Duration vs Quality of Sleep (colored by Gender to avoid Disorder charts here)
+        # 2) Sleep Duration vs Quality of Sleep
         st.markdown("**Sleep Duration vs Quality of Sleep**")
         fig2 = px.scatter(
             fdf, x="Sleep Duration", y="Quality of Sleep",
@@ -154,7 +165,7 @@ with tab_viz:
         )
         st.plotly_chart(fig2, use_container_width=True)
     with c2:
-        # 3) Age vs Sleep Duration (colored by Gender)
+        # 3) Age vs Sleep Duration
         st.markdown("**Age vs Sleep Duration**")
         fig3 = px.scatter(
             fdf, x="Age", y="Sleep Duration",
@@ -188,30 +199,25 @@ with tab_viz:
     fig6 = px.histogram(fdf, x="Heart Rate", nbins=25)
     st.plotly_chart(fig6, use_container_width=True)
 
-    # 7) Average Sleep by Occupation (Horizontal bar for readability)
-    st.markdown("**Average Sleep Duration by Occupation**")
-    occ_mean = (
-        fdf.groupby("Occupation", as_index=False)["Sleep Duration"]
-           .mean()
-           .rename(columns={"Sleep Duration": "Avg Sleep (h)"})
-           .sort_values("Avg Sleep (h)", ascending=False)
+    # >>> Moved here: Sleep Disorder Breakdown <<<
+    st.markdown("**Sleep Disorder Breakdown**")
+    disorder_count = (
+        fdf[fdf["Sleep Disorder"] != "None"]["Sleep Disorder"]
+        .value_counts()
+        .rename_axis("Disorder").reset_index(name="Count")
     )
-    fig_occ = px.bar(
-        occ_mean, y="Occupation", x="Avg Sleep (h)", text="Avg Sleep (h)",
-        orientation="h"
+    fig_disorder = px.bar(
+        disorder_count, x="Disorder", y="Count", text="Count"
     )
-    fig_occ.update_traces(texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False)
-    fig_occ.update_layout(
-        xaxis_title="Average Sleep Duration (hours)",
-        yaxis_title="Occupation",
-        height=700,  # أطول قليلًا عشان الأسماء
-        margin=dict(t=40, r=20, b=40, l=120),
-        showlegend=False
+    fig_disorder.update_traces(textposition="outside", texttemplate="%{text:.0f}")
+    fig_disorder.update_layout(
+        yaxis_title="Count",
+        xaxis_title="Disorder",
+        showlegend=False,
+        height=450,
+        margin=dict(t=40, r=20, b=70, l=60)
     )
-    # قفل التكبير للموبايل
-    fig_occ.update_xaxes(fixedrange=True)
-    fig_occ.update_yaxes(fixedrange=True)
-    st.plotly_chart(fig_occ, use_container_width=True)
+    st.plotly_chart(fig_disorder, use_container_width=True)
 
 # ================== DATA TABLE ==================
 with tab_table:
@@ -231,4 +237,3 @@ with tab_end:
         "- استخدم الفلاتر الجانبية لمقارنة شرائح مختلفة (العمر، الجنس، الوظيفة، BMI، اضطراب النوم).\n"
         "- قسم Data Table يتيح لك تنزيل البيانات المفلترة لمزيد من التحليل."
     )
-
