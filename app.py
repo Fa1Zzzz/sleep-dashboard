@@ -212,6 +212,42 @@ fig_occ.update_yaxes(fixedrange=True)
 
 st.plotly_chart(fig_occ, use_container_width=True)
 
+# 8) Sleep Disorder Breakdown
+st.markdown("**Sleep Disorder Breakdown**")
+
+# حساب عدد كل اضطراب
+disorder_count = (
+    fdf[fdf["Sleep Disorder"] != "None"]["Sleep Disorder"]
+    .value_counts()
+    .rename_axis("Disorder")
+    .reset_index(name="Count")
+)
+
+fig_disorder = px.bar(
+    disorder_count,
+    x="Disorder",
+    y="Count",
+    text="Count",
+    color="Disorder",
+    color_discrete_sequence=px.colors.qualitative.Set2
+)
+
+fig_disorder.update_traces(
+    textposition="outside",
+    texttemplate="%{text:.0f}"
+)
+
+fig_disorder.update_layout(
+    yaxis_title="Count",
+    xaxis_title="Disorder",
+    showlegend=False,
+    height=450,
+    margin=dict(t=40, r=20, b=70, l=60)
+)
+
+st.plotly_chart(fig_disorder, use_container_width=True)
+
+
 # ================== DATA TABLE ==================
 with tab_table:
     st.subheader("Filtered Data")
