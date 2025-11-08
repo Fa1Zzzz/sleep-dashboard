@@ -288,7 +288,7 @@ with tab_viz:
             return (isinstance(d, pd.DataFrame) and not d.empty and all(c in d.columns for c in cols))
         if has_cols(merged_df, required_cols):
             return merged_df, "merged"
-        if has_cols(fdf2, required_cols):
+        if has_cols(second_df, required_cols):
             return fdf2, "second"
         if has_cols(fdf, required_cols):
             return fdf, "primary"
@@ -320,7 +320,7 @@ with tab_viz:
 
     # -------- Mapping UI (so your columns don't have to match exact names) --------
     with st.expander("Column Mapping (use if your columns have different names)", expanded=False):
-        cols_union = _union_columns(fdf, fdf2, merged_df)
+        cols_union = _union_columns(fdf, second_df, merged_df)
         col_study_hours = st.selectbox(
             "Study Hours column",
             options=["(auto-detect)"] + cols_union,
@@ -354,7 +354,7 @@ with tab_viz:
         )
 
     # Autodetect fallbacks if user leaves mapping as auto
-    cols_union_all = _union_columns(fdf, fdf2, merged_df)
+    cols_union_all = _union_columns(fdf, second_df, merged_df)
     if col_study_hours == "(auto-detect)":
         col_study_hours = _guess(cols_union_all, "Study Hours", "StudyHours", "Hours of Study", "study")
     if col_univ_year == "(auto-detect)":
