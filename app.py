@@ -3,6 +3,7 @@
 # - Loads primary dataset as before
 # - Loads second dataset automatically from "student_sleep_patterns.csv"
 # - Shows the 5 requested charts ONLY under the "Visualizations" tab
+# - Adds Insights under each chart (per your text)
 # - Second dataset tab = preview only (no charts)
 # -----------------------------------------------------------------------
 
@@ -123,7 +124,7 @@ if missing:
     st.stop()
 
 # ------------------ Sidebar Filters (Primary) ------------------
-st.sidebar.header("Filters (Primary)")
+st.sidebar.header("Filters")
 age_min, age_max = int(df["Age"].min()), int(df["Age"].max())
 age_range = st.sidebar.slider("Age Range", age_min, age_max, (age_min, age_max), step=1)
 
@@ -210,49 +211,76 @@ with tab_overview:
     fig_occ.update_yaxes(fixedrange=True)
     st.plotly_chart(fig_occ, use_container_width=True)
 
-# ================== VISUALIZATIONS (ALL CHARTS LIVE HERE) ==================
+# ================== VISUALIZATIONS (ALL CHARTS + INSIGHTS HERE) ==================
 with tab_viz:
-    st.subheader("Core Visualizations (Primary Dataset)")
-    # Primary visuals
+    st.subheader("Core Visualizations")
+
+    # 1) Sleep Duration Distribution
+    st.markdown("**Sleep Duration Distribution**")
     fig1 = px.histogram(fdf, x="Sleep Duration", nbins=20, marginal="box", opacity=0.9)
     st.plotly_chart(fig1, use_container_width=True)
+    st.markdown(
+        "**Insight:** This chart displays a boxplot of sleep durations, where the median sleep duration is around 6.5 hours. "
+        "The minimum value indicates 5.8 hours of sleep, suggesting that some individuals might have shorter sleep durations."
+    )
 
-    c1, c2 = st.columns(2)
-    with c1:
-        fig2 = px.scatter(
-            fdf, x="Sleep Duration", y="Quality of Sleep",
-            color="Gender",
-            hover_data=[c for c in ["Age","Occupation","BMI Category","Sleep Disorder"] if c in fdf.columns],
-            trendline="ols"
-        )
-        st.plotly_chart(fig2, use_container_width=True)
-    with c2:
-        fig3 = px.scatter(
-            fdf, x="Age", y="Sleep Duration",
-            color="Gender",
-            hover_data=[c for c in ["Occupation","BMI Category"] if c in fdf.columns]
-        )
-        st.plotly_chart(fig3, use_container_width=True)
+    # 2) Sleep Duration vs Quality of Sleep
+    st.markdown("**Sleep Duration vs Quality of Sleep**")
+    fig2 = px.scatter(
+        fdf, x="Sleep Duration", y="Quality of Sleep",
+        color="Gender",
+        hover_data=[c for c in ["Age","Occupation","BMI Category","Sleep Disorder"] if c in fdf.columns],
+        trendline="ols"
+    )
+    st.plotly_chart(fig2, use_container_width=True)
+    st.markdown(
+        "**Insight:** This scatter plot demonstrates a positive correlation between sleep duration and quality of sleep. "
+        "As sleep duration increases, so does sleep quality. This suggests that individuals who sleep for longer durations tend to report better quality of sleep. "
+        "The trend is observed across both genders, with females generally showing a slightly higher quality of sleep compared to males."
+    )
 
-    c3, c4 = st.columns(2)
-    with c3:
-        fig4 = px.scatter(
-            fdf, x="Physical Activity Level", y="Quality of Sleep",
-            color="Gender",
-            hover_data=[c for c in ["Age","BMI Category"] if c in fdf.columns], trendline="ols"
-        )
-        st.plotly_chart(fig4, use_container_width=True)
-    with c4:
-        fig5 = px.scatter(
-            fdf, x="Stress Level", y="Sleep Duration",
-            color="Gender",
-            hover_data=[c for c in ["Age","BMI Category"] if c in fdf.columns], trendline="ols"
-        )
-        st.plotly_chart(fig5, use_container_width=True)
+    # 3) Age vs Sleep Duration
+    st.markdown("**Age vs Sleep Duration**")
+    fig3 = px.scatter(
+        fdf, x="Age", y="Sleep Duration",
+        color="Gender",
+        hover_data=[c for c in ["Occupation","BMI Category"] if c in fdf.columns]
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+    st.markdown(
+        "**Insight:** The scatter plot reveals that sleep duration does not significantly vary with age, "
+        "as the data points remain scattered across different ages with no clear trend. "
+        "Individuals in different age groups report similar sleep durations, indicating that factors other than age might play a more important role in determining sleep duration."
+    )
 
+    # (REMOVED) Physical Activity vs Quality for PRIMARY core visuals — بناءً على طلبك
+
+    # 4) Stress Level vs Sleep Duration
+    st.markdown("**Stress Level vs Sleep Duration**")
+    fig5 = px.scatter(
+        fdf, x="Stress Level", y="Sleep Duration",
+        color="Gender",
+        hover_data=[c for c in ["Age","BMI Category"] if c in fdf.columns], trendline="ols"
+    )
+    st.plotly_chart(fig5, use_container_width=True)
+    st.markdown(
+        "**Insight:** There is a negative correlation between stress level and sleep duration. "
+        "As stress levels increase, sleep duration tends to decrease. "
+        "This suggests that individuals who experience higher stress levels tend to sleep less, highlighting the importance of stress management in improving sleep. "
+        "Its effect males more than females."
+    )
+
+    # 5) Heart Rate Distribution
+    st.markdown("**Heart Rate Distribution**")
     fig6 = px.histogram(fdf, x="Heart Rate", nbins=25)
     st.plotly_chart(fig6, use_container_width=True)
+    st.markdown(
+        "**Insight:** The histogram shows the distribution of heart rates, with most individuals having heart rates between 65 and 75 beats per minute. "
+        "This suggests that the majority of the population has a normal resting heart rate, with fewer individuals having higher or lower heart rates. "
+        "There is a significant concentration around 70 bpm."
+    )
 
+    # ----------------- Requested Quick Charts (Second Dataset) -----------------
     st.markdown("---")
     st.subheader("Requested Quick Charts (Second Dataset)")
 
@@ -263,39 +291,71 @@ with tab_viz:
         st.warning("⚠️ لم يتم العثور على 'student_sleep_patterns.csv' بجانب app.py.")
     else:
         # 1) Sleep Duration vs Study Hours
-        st.markdown("**1) Sleep Duration vs Study Hours**")
+        st.markdown("**Sleep Duration vs Study Hours**")
         if _has(second_df, ["Sleep Duration", "Study Hours"]):
             tmp = second_df.copy()
             color_col = "Gender" if "Gender" in tmp.columns else None
             fig_sd = px.scatter(tmp, x="Study Hours", y="Sleep Duration", color=color_col, trendline="ols",
                                 hover_data=[c for c in ["Age","University Year"] if c in tmp.columns])
             st.plotly_chart(fig_sd, use_container_width=True)
+            st.markdown(
+                "**Insight:** There is a weak negative correlation between study hours and sleep duration. "
+                "As study hours increase, sleep duration slightly decreases, but the effect is not very strong. "
+                "This suggests that while students may sacrifice some sleep for studying, the relationship is not very significant. "
+                "Other factors likely contribute more strongly to sleep duration than study hours alone."
+            )
         else:
             st.info("يحتاج أعمدة: 'Sleep Duration' و 'Study Hours'.")
 
         # 2) Sleep Quality by University Year (box)
-        st.markdown("**2) Sleep Quality by University Year**")
+        st.markdown("**Sleep Quality by University Year**")
         if _has(second_df, ["Quality of Sleep", "University Year"]):
             tmp = second_df.copy()
             fig_q = px.box(tmp, x="University Year", y="Quality of Sleep", points="outliers")
             st.plotly_chart(fig_q, use_container_width=True)
+            st.markdown(
+                "**Insight:** This boxplot shows sleep quality across different university years. "
+                "The data reveals that sleep quality tends to remain fairly consistent across all years, "
+                "with no significant difference between first, second, third, and fourth-year students. "
+                "The interquartile range is quite similar for each group, suggesting that university year does not heavily influence sleep quality."
+            )
         else:
             st.info("يحتاج أعمدة: 'Quality of Sleep' و 'University Year'.")
 
         # 3) Caffeine Intake vs Sleep Duration
-        st.markdown("**3) Caffeine Intake vs Sleep Duration**")
+        st.markdown("**Caffeine Intake vs Sleep Duration**")
         if _has(second_df, ["Caffeine Intake", "Sleep Duration"]):
             tmp = second_df.copy()
             color_col = "Gender" if "Gender" in tmp.columns else None
             fig_c = px.scatter(tmp, x="Caffeine Intake", y="Sleep Duration", color=color_col, trendline="ols")
             st.plotly_chart(fig_c, use_container_width=True)
+            st.markdown(
+                "**Insight:** This chart reveals that caffeine intake and sleep duration have an opposite relationship, especially for females. "
+                "As caffeine intake increases, sleep duration tends to decrease for females, while males show less of a change in sleep duration with varying caffeine intake. "
+                "This highlights that caffeine may have a stronger negative impact on females’ sleep than on males."
+            )
         else:
             st.info("يحتاج أعمدة: 'Caffeine Intake' و 'Sleep Duration'.")
 
-        # (حُذِف) 4) Physical Activity vs Sleep Quality  — بناءً على طلبك
+        # 4) Physical Activity vs Sleep Quality  (KEPT here for second dataset)
+        st.markdown("**Physical Activity vs Sleep Quality**")
+        if _has(second_df, ["Physical Activity Level", "Quality of Sleep"]):
+            tmp = second_df.copy()
+            color_col = "Gender" if "Gender" in tmp.columns else None
+            fig_pa = px.scatter(tmp, x="Physical Activity Level", y="Quality of Sleep",
+                                color=color_col, trendline="ols")
+            st.plotly_chart(fig_pa, use_container_width=True)
+            st.markdown(
+                "**Insight:** The data shows a positive relationship between physical activity levels and sleep quality. "
+                "As physical activity increases, the quality of sleep improves. "
+                "This effect is particularly evident for males, while the relationship is less pronounced for females. "
+                "Encouraging physical activity may help improve sleep quality, especially for men."
+            )
+        else:
+            st.info("يحتاج أعمدة: 'Physical Activity Level' و 'Quality of Sleep'.")
 
         # 5) Sleep Start and End Times — Weekdays vs Weekends
-        st.markdown("**5) Sleep Start and End Times — Weekdays vs Weekends**")
+        st.markdown("**Sleep Start and End Times — Weekdays vs Weekends**")
         wk_set = {"Weekday_Sleep_Start","Weekend_Sleep_Start","Weekday_Sleep_End","Weekend_Sleep_End"}
         if wk_set.issubset(set(second_df.columns)) and bool(second_df["_Agg_Time_ready"].iloc[0]):
             tmp = second_df.copy()
@@ -312,12 +372,18 @@ with tab_viz:
             fig_time2 = px.line(agg, x="Day Type", y="Minutes", color="Metric")
             fig_time2.update_layout(yaxis_title="Time (minutes since midnight)")
             st.plotly_chart(fig_time2, use_container_width=True)
+            st.markdown(
+                "**Insight:** The chart shows a comparison between sleep start and end times on weekdays versus weekends.  \n"
+                "* **Weekdays:** Sleep typically starts later (around 550 minutes since midnight) and ends earlier.  \n"
+                "* **Weekends:** Sleep starts earlier and ends later, indicating that individuals tend to go to bed earlier and wake up later on weekends compared to weekdays, "
+                "likely due to differences in work or school schedules."
+            )
         else:
             st.info("وفر أعمدة Weekday/Weekend أو وفّر أعمدة موحّدة 'Sleep Start' و 'Sleep End' (وأفضل وجود 'Date').")
 
 # ================== DATA TABLE (Primary) ==================
 with tab_table:
-    st.subheader("Filtered Data (Primary)")
+    st.subheader("Filtered Data")
     st.dataframe(fdf, use_container_width=True)
     st.download_button("Download filtered CSV",
                        fdf.to_csv(index=False).encode("utf-8"),
@@ -346,8 +412,16 @@ with tab_second:
 # ================== CONCLUSION ==================
 with tab_end:
     st.subheader("Conclusion")
-    st.write(
-        "- The five requested charts are shown only under the Visualizations tab (with #4 from the second dataset removed as requested).\n"
-        "- The second dataset is loaded automatically from student_sleep_patterns.csv.\n"
-        "- The Second Dataset tab is for preview/inspection only."
+    st.markdown(
+        "**Key Conclusions:**\n"
+        "* **Study Hours and Sleep Duration:** A weak negative correlation exists. More study hours slightly reduce sleep duration.\n\n"
+        "* **Caffeine Intake and Sleep Duration:** Males tend to sleep longer with higher caffeine intake, while females sleep less as caffeine intake increases.\n"
+        "* **Physical Activity and Sleep Quality:** Physical activity improves sleep quality, especially for females.\n"
+        "* **Age and Sleep Duration:** No clear correlation between age and sleep duration.\n"
+        "* **Stress Level and Sleep Duration:** Higher stress levels are linked to shorter sleep durations.\n\n"
+        "**Recommendations:**\n"
+        "1- Promote Better Time Management: Encourage students to balance study and sleep\n\n"
+        "2- Monitor Caffeine Intake: Educate students, especially females, on caffeine’s impact on sleep.\n\n"
+        "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n\n"
+        "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
