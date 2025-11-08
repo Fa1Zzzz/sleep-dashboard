@@ -57,8 +57,13 @@ def load_data(path: str) -> pd.DataFrame:
 # ------------------ Data Load & Clean (Second - Bundled) ------------------
 SECOND_PATH = "student_sleep_patterns.csv"  # ضع الملف في نفس مجلد app.py
 
+# ------------------ Data Load & Clean (Second - Bundled) ------------------
+SECOND_PATH = "student_sleep_patterns.csv"  # يجب يكون بجانب app.py
+
 @st.cache_data(show_spinner=False)
 def load_second_bundled(path: str) -> pd.DataFrame:
+    import os
+    import pandas as pd
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
@@ -66,29 +71,52 @@ def load_second_bundled(path: str) -> pd.DataFrame:
     except Exception:
         return pd.DataFrame()
 
-    # نحاول توحيد/تحويل الأعمدة المحتملة
-    # مرشحات للأسماء المحتملة (إنجليزي/اختصارات)
-    def _to_num(df, cols):
-        for c in cols:
-            if c in df.columns:
-                df[c] = pd.to_numeric(df[c], errors="coerce")
+    # ---- توحيد أسماء الأعمدة إلى صيغة قياسية ----
+    alias_map = {
+        "Sleep Duration": ["Sleep_Duration"],
+        "Quality of Sleep": ["Sleep_Quality"],
+        "Physical Activity Level": ["Physical_Activity"],
+        "Study Hours": ["Study_Hours"],
+        "Caffeine Intake": ["Caffeine_Intake"],
+        "University Year": ["University_Year"],
+    }
 
-    def _to_dt(df, cols):
-        for c in cols:
-            if c in df.columns:
-                df[c] = pd.to_datetime(df[c], errors="coerce")
+    for std, alts in alias_map.items():
+        if std not in df2.columns:
+            for alt in alts:
+                if alt in df2.columns:
+                    df2[std] = df2[alt]
+                    break
 
-    # أشياء شائعة بالداتا الثانية
-    _to_num(df2, ["Sleep Duration", "Quality of Sleep", "Physical Activity Level",
-                  "Stress Level", "Heart Rate", "Daily Steps",
-                  "Study Hours", "Caffeine Intake"])
-    _to_dt(df2, ["Sleep Start", "Sleep End", "Date"])
+    # تحويلات رقمية
+    num_cols = [
+        "Sleep Duration", "Quality of Sleep", "Physical Activity Level",
+        "Study Hours", "Caffeine Intake"
+    ]
+    for c in num_cols:
+        if c in df2.columns:
+            df2[c] = pd.to_numeric(df2[c], errors="coerce")
 
-    # Gender/Year لو موجودة
-    if "Gender" in df2.columns:
-        df2["Gender"] = df2["Gender"].astype("string")
+    # Gender/Year كسلاسل
+    for c in ["Gender", "University Year"]:
+        if c in df2.columns:
+            df2[c] = df2[c].astype("string")
+
+    # ---- تجهيز أعمدة الأوقات Weekday/Weekend ----
+    wk_cols = {"Weekday_Sleep_Start","Weekend_Sleep_Start","Weekday_Sleep_End","Weekend_Sleep_End"}
+    if wk_cols.issubset(set(df2.columns)):
+        def h_to_min(x):
+            return pd.to_numeric(x, errors="coerce") * 60.0
+        df2["_W_Start_m"] = h_to_min(df2["Weekday_Sleep_Start"])
+        df2["_W_End_m"]   = h_to_min(df2["Weekday_Sleep_End"])
+        df2["_WE_Start_m"]= h_to_min(df2["Weekend_Sleep_Start"])
+        df2["_WE_End_m"]  = h_to_min(df2["Weekend_Sleep_End"])
+        df2["_Agg_Time_ready"] = True
+    else:
+        df2["_Agg_Time_ready"] = False
 
     return df2
+
 
 # ------------ Load datasets ------------
 df = load_data("Sleep_health_and_lifestyle_dataset.csv")
@@ -243,129 +271,77 @@ with tab_viz:
                                margin=dict(t=40, r=20, b=70, l=60))
     st.plotly_chart(fig_disorder, use_container_width=True)
 
-    # ---------- NEW: Requested Quick Charts (Second Dataset) ----------
-    st.markdown("---")
-    st.subheader("Requested Quick Charts (Second Dataset)")
+   # ---------- NEW: Requested Quick Charts (Second Dataset) ----------
+st.markdown("---")
+st.subheader("Requested Quick Charts (Second Dataset)")
 
-    def _has(df, cols):
-        return isinstance(df, pd.DataFrame) and not df.empty and all(c in df.columns for c in cols)
+def _has(df, cols):
+    return isinstance(df, pd.DataFrame) and not df.empty and all(c in df.columns for c in cols)
 
-    def _guess(cols, *cands):
-        lower = {c.lower(): c for c in cols}
-        for cand in cands:
-            if cand.lower() in lower:
-                return lower[cand.lower()]
-        for c in cols:
-            cl = c.lower()
-            if any(tok.lower() in cl for tok in cands):
-                return c
-        return None
-
-    # إذا الثاني فاضي ننبّه مرة واحدة
-    if second_df.empty:
-        st.warning("⚠️ لم يتم العثور على ملف second dataset 'student_sleep_patterns.csv' في مجلد التطبيق.")
+if second_df.empty:
+    st.warning("⚠️ لم يتم العثور على 'student_sleep_patterns.csv' بجانب app.py.")
+else:
+    # 1) Sleep Duration vs Study Hours
+    st.markdown("**1) Sleep Duration vs Study Hours**")
+    if _has(second_df, ["Sleep Duration", "Study Hours"]):
+        tmp = second_df.copy()
+        color_col = "Gender" if "Gender" in tmp.columns else None
+        fig_sd = px.scatter(tmp, x="Study Hours", y="Sleep Duration", color=color_col, trendline="ols",
+                            hover_data=[c for c in ["Age","University Year"] if c in tmp.columns])
+        st.plotly_chart(fig_sd, use_container_width=True)
     else:
-        cols_union = list(map(str, second_df.columns))
+        st.info("يحتاج أعمدة: 'Sleep Duration' و 'Study Hours'.")
 
-        # تخمين أسماء الأعمدة المحتملة
-        col_study  = _guess(cols_union, "Study Hours", "StudyHours", "Hours of Study", "study")
-        col_year   = _guess(cols_union, "University Year", "Year", "Uni Year", "Academic Year", "year")
-        col_caff   = _guess(cols_union, "Caffeine Intake", "Caffeine", "Coffee Cups", "cups")
-        col_start  = _guess(cols_union, "Sleep Start", "Bedtime", "SleepStart", "Start Time", "sleep start")
-        col_end    = _guess(cols_union, "Sleep End", "Wakeup", "Wake Time", "SleepEnd", "End Time", "sleep end")
-        col_date   = _guess(cols_union, "Date", "Day", "Record Date", "Datetime")
+    # 2) Sleep Quality by University Year
+    st.markdown("**2) Sleep Quality by University Year**")
+    if _has(second_df, ["Quality of Sleep", "University Year"]):
+        tmp = second_df.copy()
+        fig_q = px.box(tmp, x="University Year", y="Quality of Sleep", points="outliers")
+        st.plotly_chart(fig_q, use_container_width=True)
+    else:
+        st.info("يحتاج أعمدة: 'Quality of Sleep' و 'University Year'.")
 
-        # 1) Sleep Duration vs Study Hours (scatter)
-        st.markdown("**1) Sleep Duration vs Study Hours**")
-        if _has(second_df, ["Sleep Duration"]) and col_study:
-            tmp = second_df.copy()
-            for c in ["Sleep Duration", col_study]:
-                tmp[c] = pd.to_numeric(tmp[c], errors="coerce")
-            color_col = "Gender" if "Gender" in tmp.columns else None
-            fig_sd = px.scatter(tmp, x=col_study, y="Sleep Duration", color=color_col, trendline="ols",
-                                hover_data=[c for c in ["Age","Occupation","BMI Category","Sleep Disorder"] if c in tmp.columns])
-            st.plotly_chart(fig_sd, use_container_width=True)
-        else:
-            st.info("يحتاج أعمدة: 'Sleep Duration' و 'Study Hours' (أو ما يقابلها).")
+    # 3) Caffeine Intake vs Sleep Duration
+    st.markdown("**3) Caffeine Intake vs Sleep Duration**")
+    if _has(second_df, ["Caffeine Intake", "Sleep Duration"]):
+        tmp = second_df.copy()
+        color_col = "Gender" if "Gender" in tmp.columns else None
+        fig_c = px.scatter(tmp, x="Caffeine Intake", y="Sleep Duration", color=color_col, trendline="ols")
+        st.plotly_chart(fig_c, use_container_width=True)
+    else:
+        st.info("يحتاج أعمدة: 'Caffeine Intake' و 'Sleep Duration'.")
 
-        # 2) Sleep Quality by University Year (box)
-        st.markdown("**2) Sleep Quality by University Year**")
-        if _has(second_df, ["Quality of Sleep"]) and col_year:
-            tmp = second_df.copy()
-            fig_q = px.box(tmp, x=col_year, y="Quality of Sleep", points="outliers")
-            st.plotly_chart(fig_q, use_container_width=True)
-        else:
-            st.info("يحتاج أعمدة: 'Quality of Sleep' و 'University Year' (أو ما يقابلها).")
+    # 4) Physical Activity vs Sleep Quality
+    st.markdown("**4) Physical Activity vs Sleep Quality**")
+    if _has(second_df, ["Physical Activity Level", "Quality of Sleep"]):
+        tmp = second_df.copy()
+        color_col = "Gender" if "Gender" in tmp.columns else None
+        fig_pa = px.scatter(tmp, x="Physical Activity Level", y="Quality of Sleep",
+                            color=color_col, trendline="ols")
+        st.plotly_chart(fig_pa, use_container_width=True)
+    else:
+        st.info("يحتاج أعمدة: 'Physical Activity Level' و 'Quality of Sleep'.")
 
-        # 3) Caffeine Intake vs Sleep Duration (scatter)
-        st.markdown("**3) Caffeine Intake vs Sleep Duration**")
-        if _has(second_df, ["Sleep Duration"]) and col_caff:
-            tmp = second_df.copy()
-            for c in ["Sleep Duration", col_caff]:
-                tmp[c] = pd.to_numeric(tmp[c], errors="coerce")
-            color_col = "Gender" if "Gender" in tmp.columns else None
-            fig_c = px.scatter(tmp, x=col_caff, y="Sleep Duration", color=color_col, trendline="ols")
-            st.plotly_chart(fig_c, use_container_width=True)
-        else:
-            st.info("يحتاج أعمدة: 'Sleep Duration' و 'Caffeine Intake' (أو ما يقابلها).")
-
-        # 4) Physical Activity and Sleep Quality (scatter) — من الداتا الثانية
-        st.markdown("**4) Physical Activity vs Sleep Quality**")
-        if _has(second_df, ["Physical Activity Level", "Quality of Sleep"]):
-            tmp = second_df.copy()
-            color_col = "Gender" if "Gender" in tmp.columns else None
-            fig_pa = px.scatter(tmp, x="Physical Activity Level", y="Quality of Sleep",
-                                color=color_col, trendline="ols")
-            st.plotly_chart(fig_pa, use_container_width=True)
-        else:
-            st.info("يحتاج أعمدة: 'Physical Activity Level' و 'Quality of Sleep'.")
-
-        # 5) Sleep Start and End Times — Weekdays vs Weekends (line)
-        st.markdown("**5) Sleep Start and End Times — Weekdays vs Weekends**")
-        if (col_start and col_end) and (col_start in second_df.columns) and (col_end in second_df.columns):
-            tmp = second_df.copy()
-            tmp[col_start] = pd.to_datetime(tmp[col_start], errors="coerce")
-            tmp[col_end]   = pd.to_datetime(tmp[col_end], errors="coerce")
-
-            # Day Type
-            if col_date and col_date in tmp.columns:
-                tmp[col_date] = pd.to_datetime(tmp[col_date], errors="coerce")
-                dow = tmp[col_date].dt.dayofweek
-                tmp["Day Type"] = np.where(dow.isin([4,5]), "Weekend", "Weekday")
-            elif "Day Type" in tmp.columns:
-                tmp["Day Type"] = tmp["Day Type"].astype(str)
-            else:
-                # بدون تاريخ: نعرض متوسطات عامة فقط
-                tmp["Day Type"] = "Unknown"
-
-            tmp = tmp.dropna(subset=[col_start, col_end]).copy()
-
-            def to_minutes(ts):
-                return ts.dt.hour * 60 + ts.dt.minute
-
-            tmp["Start_m"] = to_minutes(tmp[col_start])
-            tmp["End_m"]   = to_minutes(tmp[col_end])
-
-            if col_date and (col_date in tmp.columns) and tmp[col_date].notna().any() and (tmp["Day Type"] != "Unknown").any():
-                plot_df = tmp.dropna(subset=[col_date]).copy()
-                plot_df = plot_df.melt(id_vars=[col_date, "Day Type"], value_vars=["Start_m", "End_m"],
-                                       var_name="Metric", value_name="Minutes")
-                plot_df["Metric"] = plot_df["Metric"].map({"Start_m": "Sleep Start", "End_m": "Sleep End"})
-                fig_time = px.line(plot_df.sort_values(col_date), x=col_date, y="Minutes",
-                                   color="Metric", line_dash="Day Type", hover_data=["Day Type"])
-                fig_time.update_layout(yaxis_title="Time (minutes since midnight)")
-                st.plotly_chart(fig_time, use_container_width=True)
-            else:
-                # متوسطات لكل Day Type إن وجدت، وإلا Unknown
-                agg = tmp.groupby("Day Type", as_index=False)[["Start_m", "End_m"]].mean(numeric_only=True)
-                agg = agg.melt(id_vars=["Day Type"], value_vars=["Start_m", "End_m"],
-                               var_name="Metric", value_name="Minutes")
-                agg["Metric"] = agg["Metric"].map({"Start_m": "Sleep Start", "End_m": "Sleep End"})
-                fig_time2 = px.line(agg, x="Day Type", y="Minutes", color="Metric")
-                fig_time2.update_layout(yaxis_title="Time (minutes since midnight)")
-                st.plotly_chart(fig_time2, use_container_width=True)
-        else:
-            st.info("يحتاج أعمدة: 'Sleep Start' و 'Sleep End' (وأفضل وجود 'Date' للفصل بين Weekday/Weekend).")
+    # 5) Sleep Start and End Times — Weekdays vs Weekends
+    st.markdown("**5) Sleep Start and End Times — Weekdays vs Weekends**")
+    wk_set = {"Weekday_Sleep_Start","Weekend_Sleep_Start","Weekday_Sleep_End","Weekend_Sleep_End"}
+    if wk_set.issubset(set(second_df.columns)) and bool(second_df["_Agg_Time_ready"].iloc[0]):
+        tmp = second_df.copy()
+        agg = pd.DataFrame({
+            "Day Type": ["Weekday","Weekend","Weekday","Weekend"],
+            "Metric":  ["Sleep Start","Sleep Start","Sleep End","Sleep End"],
+            "Minutes": [
+                tmp["_W_Start_m"].mean(skipna=True),
+                tmp["_WE_Start_m"].mean(skipna=True),
+                tmp["_W_End_m"].mean(skipna=True),
+                tmp["_WE_End_m"].mean(skipna=True),
+            ]
+        })
+        fig_time2 = px.line(agg, x="Day Type", y="Minutes", color="Metric")
+        fig_time2.update_layout(yaxis_title="Time (minutes since midnight)")
+        st.plotly_chart(fig_time2, use_container_width=True)
+    else:
+        st.info("يحتاج أعمدة Weekday/Weekend الخاصة بأوقات النوم.")
 
 # ================== DATA TABLE (Primary) ==================
 with tab_table:
@@ -403,3 +379,4 @@ with tab_end:
         "- الداتا الثانية تُحمَّل تلقائيًا من student_sleep_patterns.csv بدون رفع.\n"
         "- إذا ما ظهر ملف الداتا الثانية، تأكد من وجوده بجانب app.py."
     )
+
