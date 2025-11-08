@@ -278,183 +278,128 @@ with tab_viz:
         margin=dict(t=40, r=20, b=70, l=60)
     )
     st.plotly_chart(fig_disorder, use_container_width=True)
-
-    # ------------------------------------------------------------------
-    # NEW: User-requested charts added below (use any dataset available)
-
-    # ---- Robust helpers (defensive against missing vars/cols) ----
-    def _df_or_empty(obj):
-        return obj if isinstance(obj, pd.DataFrame) else pd.DataFrame()
-
-    # Pull potentially defined frames safely
-    _f_primary = _df_or_empty(fdf)
-    _f_second_raw = _df_or_empty(globals().get('second_df'))
-    _f_second_filt = _df_or_empty(globals().get('fdf2'))
-    _f_second = _f_second_filt if not _f_second_filt.empty else _f_second_raw
-    _f_merged = _df_or_empty(globals().get('merged_df'))
-
-    def _has_cols(d, cols):
-        return (isinstance(d, pd.DataFrame) and not d.empty and all(c in d.columns for c in cols))
-
-    def _choose_source(required_cols):
-        # prefer merged > filtered second > raw second > primary
-        if _has_cols(_f_merged, required_cols):
-            return _f_merged, 'merged'
-        if _has_cols(_f_second, required_cols):
-            return _f_second, 'second'
-        if _has_cols(_f_primary, required_cols):
-            return _f_primary, 'primary'
-        return pd.DataFrame(), None
-
-    def _union_columns(*dfs):
-        cols = set()
-        for d in dfs:
-            if isinstance(d, pd.DataFrame) and not d.empty:
-                cols.update(map(str, d.columns))
-        return sorted(cols)
-
-    def _guess(cols_union, *candidates):
-        lower = {c.lower(): c for c in cols_union}
-        for cand in candidates:
-            if cand.lower() in lower:
-                return lower[cand.lower()]
-        for c in cols_union:
-            cl = c.lower()
-            if any(tok in cl for tok in [x.lower() for x in candidates]):
-                return c
-        return None
-
+    # ---------------- YOUR REQUESTED 5 CHARTS -----------------
     st.markdown("---")
-    st.subheader("Additional Visualizations (Requested)")
+    st.subheader("Requested Visualizations — shown for each dataset (no extra options)")
 
-    # -------- Column Mapping (handles different column names) --------
-    with st.expander("Column Mapping (use if your columns have different names)", expanded=False):
-        cols_union = _union_columns(_f_primary, _f_second, _f_merged)
-        col_study_hours = st.selectbox("Study Hours column", ["(auto-detect)"] + cols_union, index=0)
-        col_univ_year  = st.selectbox("University Year column", ["(auto-detect)"] + cols_union, index=0)
-        col_caffeine   = st.selectbox("Caffeine Intake column", ["(auto-detect)"] + cols_union, index=0)
-        col_sleep_start= st.selectbox("Sleep Start column", ["(auto-detect)"] + cols_union, index=0)
-        col_sleep_end  = st.selectbox("Sleep End column", ["(auto-detect)"] + cols_union, index=0)
-        col_date       = st.selectbox("Date column (optional)", ["(auto-detect)"] + cols_union, index=0)
+    # Column maps per dataset
+    primary_map = {
+        "sleep_duration": "Sleep Duration",
+        "study_hours": "Study Hours",
+        "sleep_quality": "Quality of Sleep",
+        "university_year": "University Year",
+        "caffeine": "Caffeine Intake",
+        "physical_activity": "Physical Activity Level",
+        "gender": "Gender",
+        "sleep_start": "Sleep Start",
+        "sleep_end": "Sleep End",
+        "date": "Date",
+    }
+    second_map = {
+        "sleep_duration": "Sleep_Duration",
+        "study_hours": "Study_Hours",
+        "sleep_quality": "Sleep_Quality",
+        "university_year": "University_Year",
+        "caffeine": "Caffeine_Intake",
+        "physical_activity": "Physical_Activity",
+        "gender": "Gender",
+        "sleep_start": "Sleep_Start",
+        "sleep_end": "Sleep_End",
+        "date": "Date",
+    }
 
-    cols_union_all = _union_columns(_f_primary, _f_second, _f_merged)
-    if col_study_hours == "(auto-detect)":
-        col_study_hours = _guess(cols_union_all, "Study Hours", "StudyHours", "Hours of Study", "study")
-    if col_univ_year == "(auto-detect)":
-        col_univ_year = _guess(cols_union_all, "University Year", "Year", "Uni Year", "Academic Year")
-    if col_caffeine == "(auto-detect)":
-        col_caffeine = _guess(cols_union_all, "Caffeine Intake", "Caffeine", "Coffee Cups", "Cups")
-    if col_sleep_start == "(auto-detect)":
-        col_sleep_start = _guess(cols_union_all, "Sleep Start", "Bedtime", "SleepStart", "Start Time")
-    if col_sleep_end == "(auto-detect)":
-        col_sleep_end = _guess(cols_union_all, "Sleep End", "Wakeup", "Wake Time", "SleepEnd", "End Time")
-    if col_date == "(auto-detect)":
-        col_date = _guess(cols_union_all, "Date", "Day", "Record Date", "Datetime")
+    def has_all(d, cols):
+        return isinstance(d, pd.DataFrame) and not d.empty and all(c in d.columns for c in cols)
 
-    # 1) Sleep Duration vs. Study Hours (scatter)
-    st.markdown("**Sleep Duration vs Study Hours**")
-    req_cols = [x for x in ["Sleep Duration", col_study_hours] if x]
-    dsrc, dname = _choose_source(req_cols)
-    if dname is None or col_study_hours is None or dsrc.empty:
-        st.info("Missing columns for this chart: needs 'Sleep Duration' and a mapped 'Study Hours' column.")
-    else:
-        tmp = dsrc.copy()
-        for c in ["Sleep Duration", col_study_hours]:
-            tmp[c] = pd.to_numeric(tmp[c], errors="coerce")
-        color_col = "Gender" if "Gender" in tmp.columns else None
-        fig_sd_sh = px.scatter(tmp, x=col_study_hours, y="Sleep Duration", color=color_col, trendline="ols",
-                               hover_data=[c for c in ["Age","Occupation","BMI Category","Sleep Disorder"] if c in tmp.columns])
-        st.plotly_chart(fig_sd_sh, use_container_width=True)
-
-    # 2) Sleep Quality by University Year (box)
-    st.markdown("**Sleep Quality by University Year**")
-    req_cols = [x for x in ["Quality of Sleep", col_univ_year] if x]
-    dsrc, dname = _choose_source(req_cols)
-    if dname is None or col_univ_year is None or dsrc.empty:
-        st.info("Missing columns for this chart: needs 'Quality of Sleep' and a mapped 'University Year' column.")
-    else:
-        tmp = dsrc.copy()
-        fig_q_year = px.box(tmp, x=col_univ_year, y="Quality of Sleep", points="outliers")
-        st.plotly_chart(fig_q_year, use_container_width=True)
-
-    # 3) Caffeine Intake vs. Sleep Duration (scatter)
-    st.markdown("**Caffeine Intake vs Sleep Duration**")
-    req_cols = [x for x in [col_caffeine, "Sleep Duration"] if x]
-    dsrc, dname = _choose_source(req_cols)
-    if dname is None or col_caffeine is None or dsrc.empty:
-        st.info("Missing columns for this chart: needs a mapped 'Caffeine Intake' and 'Sleep Duration'.")
-    else:
-        tmp = dsrc.copy()
-        for c in [col_caffeine, "Sleep Duration"]:
-            tmp[c] = pd.to_numeric(tmp[c], errors="coerce")
-        color_col = "Gender" if "Gender" in tmp.columns else None
-        fig_caff = px.scatter(tmp, x=col_caffeine, y="Sleep Duration", color=color_col, trendline="ols")
-        st.plotly_chart(fig_caff, use_container_width=True)
-
-    # 4) Physical Activity and Sleep Quality — already present above
-    st.caption("*Note: 'Physical Activity vs Quality of Sleep' above covers request #4.*")
-
-    # 5) Sleep Start and End Times — Weekdays vs Weekends
-    st.markdown("**Sleep Start and End Times — Weekdays vs Weekends**")
-
-    needed = [x for x in [col_sleep_start, col_sleep_end] if x]
-    # Prefer dataset that also includes 'Date'
-    dsrc_date, dname_date = _choose_source(needed + ([col_date] if col_date else []))
-    dsrc_only, dname_only = _choose_source(needed)
-    dsrc = dsrc_date if dname_date is not None else dsrc_only
-
-    def _both_present(df, cols):
-        return isinstance(df, pd.DataFrame) and not df.empty and all(c in df.columns for c in cols)
-
-    if not _both_present(dsrc, needed):
-        st.info("Missing columns: map 'Sleep Start' and 'Sleep End' (and optionally 'Date').")
-    else:
-        tmp = dsrc.copy()
-        # Convert only existing columns defensively
-        exist_time_cols = [c for c in [col_sleep_start, col_sleep_end] if c in tmp.columns]
-        for c in exist_time_cols:
-            tmp[c] = pd.to_datetime(tmp[c], errors="coerce")
-
-        # Day type
-        if col_date and col_date in tmp.columns:
-            tmp[col_date] = pd.to_datetime(tmp[col_date], errors="coerce")
-            dow = tmp[col_date].dt.dayofweek
-            tmp["Day Type"] = np.where(dow.isin([4,5]), "Weekend", "Weekday")
-        elif "Day Type" in tmp.columns:
-            tmp["Day Type"] = tmp["Day Type"].astype(str)
-        else:
-            tmp["Day Type"] = "Unknown"
-
-        tmp = tmp.dropna(subset=exist_time_cols).copy()
-        if tmp.empty or (tmp["Day Type"] == "Unknown").all():
-            st.info("Need a Date (or an existing 'Day Type') to separate weekdays vs weekends.")
-        else:
-            # Minutes since midnight
-            def to_minutes(ts):
-                return ts.dt.hour * 60 + ts.dt.minute
-            start_col = col_sleep_start
-            end_col = col_sleep_end
-            tmp["Start_m"] = to_minutes(tmp[start_col])
-            tmp["End_m"] = to_minutes(tmp[end_col])
-
-            if col_date and col_date in tmp.columns and tmp[col_date].notna().any():
-                plot_df = tmp.dropna(subset=[col_date]).copy()
-                plot_df = plot_df.melt(id_vars=[col_date, "Day Type"], value_vars=["Start_m", "End_m"],
-                                       var_name="Metric", value_name="Minutes")
-                plot_df["Metric"] = plot_df["Metric"].map({"Start_m": "Sleep Start", "End_m": "Sleep End"})
-                fig_time = px.line(plot_df.sort_values(col_date), x=col_date, y="Minutes",
-                                   color="Metric", line_dash="Day Type", hover_data=["Day Type"]) 
-                fig_time.update_layout(yaxis_title="Time (minutes since midnight)")
-                st.plotly_chart(fig_time, use_container_width=True)
+    def render_block(title, d, m):
+        exp = st.expander(title, expanded=True)
+        with exp:
+            # 1) Sleep Duration vs Study Hours (scatter)
+            st.markdown("**1) Sleep Duration vs Study Hours (scatter)**")
+            if has_all(d, [m["sleep_duration"], m["study_hours"]]):
+                st.plotly_chart(
+                    px.scatter(
+                        d, x=m["study_hours"], y=m["sleep_duration"],
+                        color=m["gender"] if m["gender"] in d.columns else None,
+                        trendline="ols"
+                    ), use_container_width=True
+                )
             else:
-                agg = tmp.groupby("Day Type", as_index=False)[["Start_m", "End_m"]].mean(numeric_only=True)
-                agg = agg.melt(id_vars=["Day Type"], value_vars=["Start_m", "End_m"], var_name="Metric", value_name="Minutes")
-                agg["Metric"] = agg["Metric"].map({"Start_m": "Sleep Start", "End_m": "Sleep End"})
-                fig_time2 = px.line(agg, x="Day Type", y="Minutes", color="Metric")
-                fig_time2.update_layout(yaxis_title="Time (minutes since midnight)")
-                st.plotly_chart(fig_time2, use_container_width=True)
+                st.info(f"Needs columns: {m['sleep_duration']} + {m['study_hours']}")
+
+            # 2) Sleep Quality by University Year (box)
+            st.markdown("**2) Sleep Quality by University Year (box)**")
+            if has_all(d, [m["sleep_quality"], m["university_year"]]):
+                st.plotly_chart(
+                    px.box(d, x=m["university_year"], y=m["sleep_quality"], points="outliers"),
+                    use_container_width=True
+                )
+            else:
+                st.info(f"Needs columns: {m['sleep_quality']} + {m['university_year']}")
+
+            # 3) Caffeine Intake vs Sleep Duration (scatter)
+            st.markdown("**3) Caffeine Intake vs Sleep Duration (scatter)**")
+            if has_all(d, [m["caffeine"], m["sleep_duration"]]):
+                st.plotly_chart(
+                    px.scatter(
+                        d, x=m["caffeine"], y=m["sleep_duration"],
+                        color=m["gender"] if m["gender"] in d.columns else None,
+                        trendline="ols"
+                    ), use_container_width=True
+                )
+            else:
+                st.info(f"Needs columns: {m['caffeine']} + {m['sleep_duration']}")
+
+            # 4) Physical Activity and Sleep Quality (scatter)
+            st.markdown("**4) Physical Activity and Sleep Quality (scatter)**")
+            if has_all(d, [m["physical_activity"], m["sleep_quality"]]):
+                st.plotly_chart(
+                    px.scatter(
+                        d, x=m["physical_activity"], y=m["sleep_quality"],
+                        color=m["gender"] if m["gender"] in d.columns else None,
+                        trendline="ols"
+                    ), use_container_width=True
+                )
+            else:
+                st.info(f"Needs columns: {m['physical_activity']} + {m['sleep_quality']}")
+
+            # 5) Sleep Start and End Times — Weekdays vs Weekends (line)
+            st.markdown("**5) Sleep Start and End Times — Weekdays vs Weekends (line)**")
+            start_c, end_c = m["sleep_start"], m["sleep_end"]
+            if has_all(d, [start_c, end_c]) and (m["date"] in d.columns or "Day Type" in d.columns):
+                tmp = d.copy()
+                tmp[start_c] = pd.to_datetime(tmp[start_c], errors="coerce")
+                tmp[end_c]   = pd.to_datetime(tmp[end_c], errors="coerce")
+                if m["date"] in tmp.columns:
+                    tmp[m["date"]] = pd.to_datetime(tmp[m["date"]], errors="coerce")
+                    dow = tmp[m["date"]].dt.dayofweek
+                    tmp["Day Type"] = np.where(dow.isin([4,5]), "Weekend", "Weekday")
+                tmp = tmp.dropna(subset=[start_c, end_c]).copy()
+                tmp["Start_m"] = tmp[start_c].dt.hour*60 + tmp[start_c].dt.minute
+                tmp["End_m"]   = tmp[end_c].dt.hour*60 + tmp[end_c].dt.minute
+                if m["date"] in tmp.columns and tmp[m["date"]].notna().any():
+                    plot_df = tmp.dropna(subset=[m["date"]]).copy()
+                    melt = plot_df.melt(id_vars=[m["date"], "Day Type"], value_vars=["Start_m","End_m"],
+                                        var_name="Metric", value_name="Minutes")
+                    melt["Metric"] = melt["Metric"].map({"Start_m":"Sleep Start","End_m":"Sleep End"})
+                    fig = px.line(melt.sort_values(m["date"]), x=m["date"], y="Minutes", color="Metric", line_dash="Day Type")
+                else:
+                    agg = tmp.groupby("Day Type", as_index=False)[["Start_m","End_m"]].mean(numeric_only=True)
+                    melt = agg.melt(id_vars=["Day Type"], value_vars=["Start_m","End_m"], var_name="Metric", value_name="Minutes")
+                    melt["Metric"] = melt["Metric"].map({"Start_m":"Sleep Start","End_m":"Sleep End"})
+                    fig = px.line(melt, x="Day Type", y="Minutes", color="Metric")
+                fig.update_layout(yaxis_title="Minutes since midnight")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Needs Sleep_Start/Sleep_End (and Date preferred) to split weekdays vs weekends.")
+
+    # Render per dataset
+    render_block("Primary — Sleep_health_and_lifestyle_dataset", fdf, primary_map)
+    if not fdf2.empty:
+        render_block("Second — student_sleep_patterns.csv", fdf2, second_map)
 
 # ================== DATA TABLE (Primary) ==================
+ (Primary) ==================
 with tab_table:
     st.subheader("Filtered Data (Primary)")
     st.dataframe(fdf, use_container_width=True)
