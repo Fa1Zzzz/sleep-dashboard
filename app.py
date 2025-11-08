@@ -1,10 +1,10 @@
-# app.py — Primary + Bundled Second Dataset (auto charts enabled)
-# -------------------------------------------------------------
-# What's new vs your file:
-# 1) Loads a bundled second dataset from "student_sleep_patterns.csv" (no upload UI)
-# 2) Adds the 5 requested charts to Visualizations and shows them immediately
-# 3) Keeps your original primary visuals/KPIs as-is
-# -------------------------------------------------------------
+# app.py — Primary + Bundled Second Dataset (charts only in Visualizations)
+# -----------------------------------------------------------------------
+# - Loads primary dataset as before
+# - Loads second dataset automatically from "student_sleep_patterns.csv"
+# - Shows the 5 requested charts ONLY under the "Visualizations" tab
+# - Second dataset tab = preview only (no charts)
+# -----------------------------------------------------------------------
 
 import streamlit as st
 import pandas as pd
@@ -17,7 +17,7 @@ st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
 
 st.title("Sleep Health & Lifestyle Dashboard")
-st.caption("Primary dataset + bundled second dataset. Your requested charts load automatically.")
+st.caption("Primary dataset + bundled second dataset. Requested charts live in the Visualizations tab.")
 
 # ------------------ Data Load & Clean (Primary) ------------------
 @st.cache_data
@@ -57,13 +57,8 @@ def load_data(path: str) -> pd.DataFrame:
 # ------------------ Data Load & Clean (Second - Bundled) ------------------
 SECOND_PATH = "student_sleep_patterns.csv"  # ضع الملف في نفس مجلد app.py
 
-# ------------------ Data Load & Clean (Second - Bundled) ------------------
-SECOND_PATH = "student_sleep_patterns.csv"  # يجب يكون بجانب app.py
-
 @st.cache_data(show_spinner=False)
 def load_second_bundled(path: str) -> pd.DataFrame:
-    import os
-    import pandas as pd
     if not os.path.exists(path):
         return pd.DataFrame()
     try:
@@ -71,7 +66,7 @@ def load_second_bundled(path: str) -> pd.DataFrame:
     except Exception:
         return pd.DataFrame()
 
-    # ---- توحيد أسماء الأعمدة إلى صيغة قياسية ----
+    # ---- نسخ القيم لأسماء قياسية يعتمد عليها الرسم ----
     alias_map = {
         "Sleep Duration": ["Sleep_Duration"],
         "Quality of Sleep": ["Sleep_Quality"],
@@ -80,7 +75,6 @@ def load_second_bundled(path: str) -> pd.DataFrame:
         "Caffeine Intake": ["Caffeine_Intake"],
         "University Year": ["University_Year"],
     }
-
     for std, alts in alias_map.items():
         if std not in df2.columns:
             for alt in alts:
@@ -97,26 +91,25 @@ def load_second_bundled(path: str) -> pd.DataFrame:
         if c in df2.columns:
             df2[c] = pd.to_numeric(df2[c], errors="coerce")
 
-    # Gender/Year كسلاسل
+    # أنماط
     for c in ["Gender", "University Year"]:
         if c in df2.columns:
             df2[c] = df2[c].astype("string")
 
-    # ---- تجهيز أعمدة الأوقات Weekday/Weekend ----
+    # ---- تحضير أوقات Weekday/Weekend (ساعات عشرية -> دقائق) إن توفرت ----
     wk_cols = {"Weekday_Sleep_Start","Weekend_Sleep_Start","Weekday_Sleep_End","Weekend_Sleep_End"}
     if wk_cols.issubset(set(df2.columns)):
         def h_to_min(x):
             return pd.to_numeric(x, errors="coerce") * 60.0
-        df2["_W_Start_m"] = h_to_min(df2["Weekday_Sleep_Start"])
-        df2["_W_End_m"]   = h_to_min(df2["Weekday_Sleep_End"])
-        df2["_WE_Start_m"]= h_to_min(df2["Weekend_Sleep_Start"])
-        df2["_WE_End_m"]  = h_to_min(df2["Weekend_Sleep_End"])
+        df2["_W_Start_m"]   = h_to_min(df2["Weekday_Sleep_Start"])
+        df2["_W_End_m"]     = h_to_min(df2["Weekday_Sleep_End"])
+        df2["_WE_Start_m"]  = h_to_min(df2["Weekend_Sleep_Start"])
+        df2["_WE_End_m"]    = h_to_min(df2["Weekend_Sleep_End"])
         df2["_Agg_Time_ready"] = True
     else:
         df2["_Agg_Time_ready"] = False
 
     return df2
-
 
 # ------------ Load datasets ------------
 df = load_data("Sleep_health_and_lifestyle_dataset.csv")
@@ -217,10 +210,10 @@ with tab_overview:
     fig_occ.update_yaxes(fixedrange=True)
     st.plotly_chart(fig_occ, use_container_width=True)
 
-# ================== VISUALIZATIONS ==================
+# ================== VISUALIZATIONS (ALL CHARTS LIVE HERE) ==================
 with tab_viz:
     st.subheader("Core Visualizations (Primary Dataset)")
-    # نفس رسماتك الأساسية
+    # Primary visuals
     fig1 = px.histogram(fdf, x="Sleep Duration", nbins=20, marginal="box", opacity=0.9)
     st.plotly_chart(fig1, use_container_width=True)
 
@@ -260,88 +253,76 @@ with tab_viz:
     fig6 = px.histogram(fdf, x="Heart Rate", nbins=25)
     st.plotly_chart(fig6, use_container_width=True)
 
-    disorder_count = (
-        fdf[fdf["Sleep Disorder"] != "None"]["Sleep Disorder"]
-        .value_counts()
-        .rename_axis("Disorder").reset_index(name="Count")
-    )
-    fig_disorder = px.bar(disorder_count, x="Disorder", y="Count", text="Count")
-    fig_disorder.update_traces(textposition="outside", texttemplate="%{text:.0f}")
-    fig_disorder.update_layout(yaxis_title="Count", xaxis_title="Disorder", showlegend=False, height=450,
-                               margin=dict(t=40, r=20, b=70, l=60))
-    st.plotly_chart(fig_disorder, use_container_width=True)
+    st.markdown("---")
+    st.subheader("Requested Quick Charts (Second Dataset)")
 
-   # ---------- NEW: Requested Quick Charts (Second Dataset) ----------
-st.markdown("---")
-st.subheader("Requested Quick Charts (Second Dataset)")
+    def _has(df, cols):
+        return isinstance(df, pd.DataFrame) and not df.empty and all(c in df.columns for c in cols)
 
-def _has(df, cols):
-    return isinstance(df, pd.DataFrame) and not df.empty and all(c in df.columns for c in cols)
-
-if second_df.empty:
-    st.warning("⚠️ لم يتم العثور على 'student_sleep_patterns.csv' بجانب app.py.")
-else:
-    # 1) Sleep Duration vs Study Hours
-    st.markdown("**1) Sleep Duration vs Study Hours**")
-    if _has(second_df, ["Sleep Duration", "Study Hours"]):
-        tmp = second_df.copy()
-        color_col = "Gender" if "Gender" in tmp.columns else None
-        fig_sd = px.scatter(tmp, x="Study Hours", y="Sleep Duration", color=color_col, trendline="ols",
-                            hover_data=[c for c in ["Age","University Year"] if c in tmp.columns])
-        st.plotly_chart(fig_sd, use_container_width=True)
+    if second_df.empty:
+        st.warning("⚠️ لم يتم العثور على 'student_sleep_patterns.csv' بجانب app.py.")
     else:
-        st.info("يحتاج أعمدة: 'Sleep Duration' و 'Study Hours'.")
+        # 1) Sleep Duration vs Study Hours
+        st.markdown("**1) Sleep Duration vs Study Hours**")
+        if _has(second_df, ["Sleep Duration", "Study Hours"]):
+            tmp = second_df.copy()
+            color_col = "Gender" if "Gender" in tmp.columns else None
+            fig_sd = px.scatter(tmp, x="Study Hours", y="Sleep Duration", color=color_col, trendline="ols",
+                                hover_data=[c for c in ["Age","University Year"] if c in tmp.columns])
+            st.plotly_chart(fig_sd, use_container_width=True)
+        else:
+            st.info("يحتاج أعمدة: 'Sleep Duration' و 'Study Hours'.")
 
-    # 2) Sleep Quality by University Year
-    st.markdown("**2) Sleep Quality by University Year**")
-    if _has(second_df, ["Quality of Sleep", "University Year"]):
-        tmp = second_df.copy()
-        fig_q = px.box(tmp, x="University Year", y="Quality of Sleep", points="outliers")
-        st.plotly_chart(fig_q, use_container_width=True)
-    else:
-        st.info("يحتاج أعمدة: 'Quality of Sleep' و 'University Year'.")
+        # 2) Sleep Quality by University Year (box)
+        st.markdown("**2) Sleep Quality by University Year**")
+        if _has(second_df, ["Quality of Sleep", "University Year"]):
+            tmp = second_df.copy()
+            fig_q = px.box(tmp, x="University Year", y="Quality of Sleep", points="outliers")
+            st.plotly_chart(fig_q, use_container_width=True)
+        else:
+            st.info("يحتاج أعمدة: 'Quality of Sleep' و 'University Year'.")
 
-    # 3) Caffeine Intake vs Sleep Duration
-    st.markdown("**3) Caffeine Intake vs Sleep Duration**")
-    if _has(second_df, ["Caffeine Intake", "Sleep Duration"]):
-        tmp = second_df.copy()
-        color_col = "Gender" if "Gender" in tmp.columns else None
-        fig_c = px.scatter(tmp, x="Caffeine Intake", y="Sleep Duration", color=color_col, trendline="ols")
-        st.plotly_chart(fig_c, use_container_width=True)
-    else:
-        st.info("يحتاج أعمدة: 'Caffeine Intake' و 'Sleep Duration'.")
+        # 3) Caffeine Intake vs Sleep Duration
+        st.markdown("**3) Caffeine Intake vs Sleep Duration**")
+        if _has(second_df, ["Caffeine Intake", "Sleep Duration"]):
+            tmp = second_df.copy()
+            color_col = "Gender" if "Gender" in tmp.columns else None
+            fig_c = px.scatter(tmp, x="Caffeine Intake", y="Sleep Duration", color=color_col, trendline="ols")
+            st.plotly_chart(fig_c, use_container_width=True)
+        else:
+            st.info("يحتاج أعمدة: 'Caffeine Intake' و 'Sleep Duration'.")
 
-    # 4) Physical Activity vs Sleep Quality
-    st.markdown("**4) Physical Activity vs Sleep Quality**")
-    if _has(second_df, ["Physical Activity Level", "Quality of Sleep"]):
-        tmp = second_df.copy()
-        color_col = "Gender" if "Gender" in tmp.columns else None
-        fig_pa = px.scatter(tmp, x="Physical Activity Level", y="Quality of Sleep",
-                            color=color_col, trendline="ols")
-        st.plotly_chart(fig_pa, use_container_width=True)
-    else:
-        st.info("يحتاج أعمدة: 'Physical Activity Level' و 'Quality of Sleep'.")
+        # 4) Physical Activity vs Sleep Quality
+        st.markdown("**4) Physical Activity vs Sleep Quality**")
+        if _has(second_df, ["Physical Activity Level", "Quality of Sleep"]):
+            tmp = second_df.copy()
+            color_col = "Gender" if "Gender" in tmp.columns else None
+            fig_pa = px.scatter(tmp, x="Physical Activity Level", y="Quality of Sleep",
+                                color=color_col, trendline="ols")
+            st.plotly_chart(fig_pa, use_container_width=True)
+        else:
+            st.info("يحتاج أعمدة: 'Physical Activity Level' و 'Quality of Sleep'.")
 
-    # 5) Sleep Start and End Times — Weekdays vs Weekends
-    st.markdown("**5) Sleep Start and End Times — Weekdays vs Weekends**")
-    wk_set = {"Weekday_Sleep_Start","Weekend_Sleep_Start","Weekday_Sleep_End","Weekend_Sleep_End"}
-    if wk_set.issubset(set(second_df.columns)) and bool(second_df["_Agg_Time_ready"].iloc[0]):
-        tmp = second_df.copy()
-        agg = pd.DataFrame({
-            "Day Type": ["Weekday","Weekend","Weekday","Weekend"],
-            "Metric":  ["Sleep Start","Sleep Start","Sleep End","Sleep End"],
-            "Minutes": [
-                tmp["_W_Start_m"].mean(skipna=True),
-                tmp["_WE_Start_m"].mean(skipna=True),
-                tmp["_W_End_m"].mean(skipna=True),
-                tmp["_WE_End_m"].mean(skipna=True),
-            ]
-        })
-        fig_time2 = px.line(agg, x="Day Type", y="Minutes", color="Metric")
-        fig_time2.update_layout(yaxis_title="Time (minutes since midnight)")
-        st.plotly_chart(fig_time2, use_container_width=True)
-    else:
-        st.info("يحتاج أعمدة Weekday/Weekend الخاصة بأوقات النوم.")
+        # 5) Sleep Start and End Times — Weekdays vs Weekends
+        st.markdown("**5) Sleep Start and End Times — Weekdays vs Weekends**")
+        wk_set = {"Weekday_Sleep_Start","Weekend_Sleep_Start","Weekday_Sleep_End","Weekend_Sleep_End"}
+        if wk_set.issubset(set(second_df.columns)) and bool(second_df["_Agg_Time_ready"].iloc[0]):
+            tmp = second_df.copy()
+            agg = pd.DataFrame({
+                "Day Type": ["Weekday","Weekend","Weekday","Weekend"],
+                "Metric":  ["Sleep Start","Sleep Start","Sleep End","Sleep End"],
+                "Minutes": [
+                    tmp["_W_Start_m"].mean(skipna=True),
+                    tmp["_WE_Start_m"].mean(skipna=True),
+                    tmp["_W_End_m"].mean(skipna=True),
+                    tmp["_WE_End_m"].mean(skipna=True),
+                ]
+            })
+            fig_time2 = px.line(agg, x="Day Type", y="Minutes", color="Metric")
+            fig_time2.update_layout(yaxis_title="Time (minutes since midnight)")
+            st.plotly_chart(fig_time2, use_container_width=True)
+        else:
+            st.info("وفر أعمدة Weekday/Weekend أو وفّر أعمدة موحّدة 'Sleep Start' و 'Sleep End' (وأفضل وجود 'Date').")
 
 # ================== DATA TABLE (Primary) ==================
 with tab_table:
@@ -354,7 +335,7 @@ with tab_table:
 
 # ================== SECOND DATASET (Preview only) ==================
 with tab_second:
-    st.subheader("Second Dataset — Bundled Preview")
+    st.subheader("Second Dataset — Bundled Preview (No Charts Here)")
     if second_df.empty:
         st.warning("لم يتم العثور على 'student_sleep_patterns.csv'. ضع الملف بجانب app.py ثم أعد التشغيل.")
     else:
@@ -375,8 +356,7 @@ with tab_second:
 with tab_end:
     st.subheader("Conclusion")
     st.write(
-        "- تم تفعيل الرسوم الخمسة المطلوبة وتظهر مباشرة من الداتا الثانية.\n"
-        "- الداتا الثانية تُحمَّل تلقائيًا من student_sleep_patterns.csv بدون رفع.\n"
-        "- إذا ما ظهر ملف الداتا الثانية، تأكد من وجوده بجانب app.py."
+        "- The five requested charts are shown only under the Visualizations tab.\n"
+        "- The second dataset is loaded automatically from student_sleep_patterns.csv.\n"
+        "- The Second Dataset tab is for preview/inspection only."
     )
-
