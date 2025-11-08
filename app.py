@@ -2,7 +2,7 @@
 # -----------------------------------------------------------------------
 # - Loads primary dataset as before
 # - Loads second dataset automatically from "student_sleep_patterns.csv"
-# - Shows the requested charts ONLY under the "Visualizations" tab
+# - Shows the 5 requested charts ONLY under the "Visualizations" tab
 # - Second dataset tab = preview only (no charts)
 # -----------------------------------------------------------------------
 
@@ -234,7 +234,21 @@ with tab_viz:
         )
         st.plotly_chart(fig3, use_container_width=True)
 
-    # حذفنا التشارت الذي كان هنا لــ "Physical Activity Level vs Quality of Sleep" في القسم الأساسي
+    c3, c4 = st.columns(2)
+    with c3:
+        fig4 = px.scatter(
+            fdf, x="Physical Activity Level", y="Quality of Sleep",
+            color="Gender",
+            hover_data=[c for c in ["Age","BMI Category"] if c in fdf.columns], trendline="ols"
+        )
+        st.plotly_chart(fig4, use_container_width=True)
+    with c4:
+        fig5 = px.scatter(
+            fdf, x="Stress Level", y="Sleep Duration",
+            color="Gender",
+            hover_data=[c for c in ["Age","BMI Category"] if c in fdf.columns], trendline="ols"
+        )
+        st.plotly_chart(fig5, use_container_width=True)
 
     fig6 = px.histogram(fdf, x="Heart Rate", nbins=25)
     st.plotly_chart(fig6, use_container_width=True)
@@ -278,10 +292,19 @@ with tab_viz:
         else:
             st.info("يحتاج أعمدة: 'Caffeine Intake' و 'Sleep Duration'.")
 
-        # (تم حذف التشارت رقم 4 هنا بالكامل حسب طلبك)
+        # 4) Physical Activity vs Sleep Quality
+        st.markdown("**4) Physical Activity vs Sleep Quality**")
+        if _has(second_df, ["Physical Activity Level", "Quality of Sleep"]):
+            tmp = second_df.copy()
+            color_col = "Gender" if "Gender" in tmp.columns else None
+            fig_pa = px.scatter(tmp, x="Physical Activity Level", y="Quality of Sleep",
+                                color=color_col, trendline="ols")
+            st.plotly_chart(fig_pa, use_container_width=True)
+        else:
+            st.info("يحتاج أعمدة: 'Physical Activity Level' و 'Quality of Sleep'.")
 
         # 5) Sleep Start and End Times — Weekdays vs Weekends
-        st.markdown("**4) Sleep Start and End Times — Weekdays vs Weekends**")  # أعِد ترقيمه بعد حذف 4
+        st.markdown("**5) Sleep Start and End Times — Weekdays vs Weekends**")
         wk_set = {"Weekday_Sleep_Start","Weekend_Sleep_Start","Weekday_Sleep_End","Weekend_Sleep_End"}
         if wk_set.issubset(set(second_df.columns)) and bool(second_df["_Agg_Time_ready"].iloc[0]):
             tmp = second_df.copy()
@@ -333,7 +356,7 @@ with tab_second:
 with tab_end:
     st.subheader("Conclusion")
     st.write(
-        "- The requested charts are shown only under the Visualizations tab.\n"
+        "- The five requested charts are shown only under the Visualizations tab.\n"
         "- The second dataset is loaded automatically from student_sleep_patterns.csv.\n"
         "- The Second Dataset tab is for preview/inspection only."
     )
