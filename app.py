@@ -281,120 +281,181 @@ with tab_viz:
 
     # ------------------------------------------------------------------
     # NEW: User-requested charts added below (use any dataset available)
-    # Helper to pick best data source: merged > second > primary
+
+    # Helper to pick best data source that contains ALL required columns
     def _choose_source(required_cols):
         def has_cols(d, cols):
             return (isinstance(d, pd.DataFrame) and not d.empty and all(c in d.columns for c in cols))
         if has_cols(merged_df, required_cols):
             return merged_df, "merged"
-        if has_cols(second_df, required_cols):
-            return second_df, "second"
+        if has_cols(fdf2, required_cols):
+            return fdf2, "second"
         if has_cols(fdf, required_cols):
             return fdf, "primary"
         return pd.DataFrame(), None
 
+    def _union_columns(*dfs):
+        cols = set()
+        for d in dfs:
+            if isinstance(d, pd.DataFrame) and not d.empty:
+                cols.update(map(str, d.columns))
+        return sorted(cols)
+
+    def _guess(cols_union, *candidates):
+        # simple case-insensitive contains/equals match
+        lower = {c.lower(): c for c in cols_union}
+        for cand in candidates:
+            cand_l = cand.lower()
+            if cand_l in lower:
+                return lower[cand_l]
+        # contains
+        for c in cols_union:
+            cl = c.lower()
+            if any(tok in cl for tok in [x.lower() for x in candidates]):
+                return c
+        return None
+
     st.markdown("---")
     st.subheader("Additional Visualizations (Requested)")
 
+    # -------- Mapping UI (so your columns don't have to match exact names) --------
+    with st.expander("Column Mapping (use if your columns have different names)", expanded=False):
+        cols_union = _union_columns(fdf, fdf2, merged_df)
+        col_study_hours = st.selectbox(
+            "Study Hours column",
+            options=["(auto-detect)"] + cols_union,
+            index=0,
+            help="Select if your Study Hours column has a different name."
+        )
+        col_univ_year = st.selectbox(
+            "University Year column",
+            options=["(auto-detect)"] + cols_union,
+            index=0
+        )
+        col_caffeine = st.selectbox(
+            "Caffeine Intake column",
+            options=["(auto-detect)"] + cols_union,
+            index=0
+        )
+        col_sleep_start = st.selectbox(
+            "Sleep Start column",
+            options=["(auto-detect)"] + cols_union,
+            index=0
+        )
+        col_sleep_end = st.selectbox(
+            "Sleep End column",
+            options=["(auto-detect)"] + cols_union,
+            index=0
+        )
+        col_date = st.selectbox(
+            "Date column (optional but recommended)",
+            options=["(auto-detect)"] + cols_union,
+            index=0
+        )
+
+    # Autodetect fallbacks if user leaves mapping as auto
+    cols_union_all = _union_columns(fdf, fdf2, merged_df)
+    if col_study_hours == "(auto-detect)":
+        col_study_hours = _guess(cols_union_all, "Study Hours", "StudyHours", "Hours of Study", "study")
+    if col_univ_year == "(auto-detect)":
+        col_univ_year = _guess(cols_union_all, "University Year", "Year", "Uni Year", "Academic Year")
+    if col_caffeine == "(auto-detect)":
+        col_caffeine = _guess(cols_union_all, "Caffeine Intake", "Caffeine", "Coffee Cups", "Cups")
+    if col_sleep_start == "(auto-detect)":
+        col_sleep_start = _guess(cols_union_all, "Sleep Start", "Bedtime", "SleepStart", "Start Time")
+    if col_sleep_end == "(auto-detect)":
+        col_sleep_end = _guess(cols_union_all, "Sleep End", "Wakeup", "Wake Time", "SleepEnd", "End Time")
+    if col_date == "(auto-detect)":
+        col_date = _guess(cols_union_all, "Date", "Day", "Record Date", "Datetime")
+
     # 1) Sleep Duration vs. Study Hours (scatter)
     st.markdown("**Sleep Duration vs Study Hours**")
-    req_cols = ["Sleep Duration", "Study Hours"]
+    req_cols = [c for c in ["Sleep Duration", col_study_hours] if c]
     dsrc, dname = _choose_source(req_cols)
-    if dname is None:
-        st.info("Missing columns for this chart: needs 'Sleep Duration' and 'Study Hours' in any dataset.")
+    if dname is None or col_study_hours is None or "Sleep Duration" not in dsrc.columns or col_study_hours not in dsrc.columns:
+        st.info("Missing columns for this chart: needs 'Sleep Duration' and a mapped 'Study Hours' column.")
     else:
         tmp = dsrc.copy()
-        # Try to coerce numeric
-        for c in req_cols:
+        for c in ["Sleep Duration", col_study_hours]:
             tmp[c] = pd.to_numeric(tmp[c], errors="coerce")
         color_col = "Gender" if "Gender" in tmp.columns else None
         fig_sd_sh = px.scatter(
-            tmp, x="Study Hours", y="Sleep Duration", color=color_col,
+            tmp, x=col_study_hours, y="Sleep Duration", color=color_col,
             trendline="ols", hover_data=[c for c in ["Age","Occupation","BMI Category","Sleep Disorder"] if c in tmp.columns]
         )
         st.plotly_chart(fig_sd_sh, use_container_width=True)
 
-    # 2) Sleep Quality by University Year (box or bar)
+    # 2) Sleep Quality by University Year (box)
     st.markdown("**Sleep Quality by University Year**")
-    req_cols = ["Quality of Sleep", "University Year"]
+    req_cols = [c for c in ["Quality of Sleep", col_univ_year] if c]
     dsrc, dname = _choose_source(req_cols)
-    if dname is None:
-        st.info("Missing columns for this chart: needs 'Quality of Sleep' and 'University Year'.")
+    if dname is None or col_univ_year is None or "Quality of Sleep" not in dsrc.columns or col_univ_year not in dsrc.columns:
+        st.info("Missing columns for this chart: needs 'Quality of Sleep' and a mapped 'University Year' column.")
     else:
         tmp = dsrc.copy()
-        # Box plot to show distribution
-        fig_q_year = px.box(tmp, x="University Year", y="Quality of Sleep", points="outliers")
+        fig_q_year = px.box(tmp, x=col_univ_year, y="Quality of Sleep", points="outliers")
         st.plotly_chart(fig_q_year, use_container_width=True)
 
-    # 3) Caffeine Intake vs. Sleep Duration (scatter or line)
+    # 3) Caffeine Intake vs. Sleep Duration (scatter)
     st.markdown("**Caffeine Intake vs Sleep Duration**")
-    req_cols = ["Caffeine Intake", "Sleep Duration"]
+    req_cols = [c for c in [col_caffeine, "Sleep Duration"] if c]
     dsrc, dname = _choose_source(req_cols)
-    if dname is None:
-        st.info("Missing columns for this chart: needs 'Caffeine Intake' and 'Sleep Duration'.")
+    if dname is None or col_caffeine is None or "Sleep Duration" not in dsrc.columns or col_caffeine not in dsrc.columns:
+        st.info("Missing columns for this chart: needs a mapped 'Caffeine Intake' and 'Sleep Duration'.")
     else:
         tmp = dsrc.copy()
-        for c in ["Caffeine Intake", "Sleep Duration"]:
+        for c in [col_caffeine, "Sleep Duration"]:
             tmp[c] = pd.to_numeric(tmp[c], errors="coerce")
         color_col = "Gender" if "Gender" in tmp.columns else None
-        fig_caff = px.scatter(tmp, x="Caffeine Intake", y="Sleep Duration", color=color_col, trendline="ols")
+        fig_caff = px.scatter(tmp, x=col_caffeine, y="Sleep Duration", color=color_col, trendline="ols")
         st.plotly_chart(fig_caff, use_container_width=True)
 
-    # 4) Physical Activity and Sleep Quality (already exists as fig4). Kept as requested.
+    # 4) Physical Activity and Sleep Quality — already present above
     st.caption("*Note: 'Physical Activity vs Quality of Sleep' above covers request #4.*")
 
     # 5) Sleep Start and End Times — line chart, weekdays vs weekends
     st.markdown("**Sleep Start and End Times — Weekdays vs Weekends**")
-    # We need time columns; optionally a Date column to determine weekday/weekend.
-    # Weekend in KSA: Friday(4) & Saturday(5)
-    possible_cols = ["Sleep Start", "Sleep End"]
-    # Prefer datasets that also include 'Date' to define day type.
-    dsrc, dname = _choose_source(possible_cols + ["Date"]) \
-        if _choose_source(possible_cols + ["Date"])[1] is not None else _choose_source(possible_cols)
-    if dname is None:
-        st.info("Missing columns for this chart: needs 'Sleep Start' and 'Sleep End' (and ideally 'Date').")
+    needed = [c for c in [col_sleep_start, col_sleep_end] if c]
+    # Prefer dataset that also includes 'Date'
+    dsrc_date, dname_date = _choose_source(needed + ([col_date] if col_date else []))
+    dsrc_only, dname_only = _choose_source(needed)
+    dsrc = dsrc_date if dname_date is not None else dsrc_only
+    if dsrc is None or dsrc.empty or any(c not in dsrc.columns for c in needed):
+        st.info("Missing columns for this chart: map 'Sleep Start' and 'Sleep End' (and optionally 'Date').")
     else:
         tmp = dsrc.copy()
-        # Parse times
-        for c in ["Sleep Start", "Sleep End"]:
-            tmp[c] = pd.to_datetime(tmp[c], errors="coerce").dt.time
-        # If we have a Date column, derive day_type; else try existing column
-        if "Date" in tmp.columns:
-            tmp["Date"] = pd.to_datetime(tmp["Date"], errors="coerce")
-            dow = tmp["Date"].dt.dayofweek
+        # Parse to datetime if possible
+        for c in [col_sleep_start, col_sleep_end]:
+            tmp[c] = pd.to_datetime(tmp[c], errors="coerce")
+        if col_date and col_date in tmp.columns:
+            tmp[col_date] = pd.to_datetime(tmp[col_date], errors="coerce")
+            dow = tmp[col_date].dt.dayofweek
             tmp["Day Type"] = np.where(dow.isin([4,5]), "Weekend", "Weekday")
         elif "Day Type" in tmp.columns:
             tmp["Day Type"] = tmp["Day Type"].astype(str)
         else:
             tmp["Day Type"] = "Unknown"
-        # Drop rows without times
-        tmp = tmp.dropna(subset=["Sleep Start", "Sleep End"]).copy()
+        tmp = tmp.dropna(subset=[col_sleep_start, col_sleep_end]).copy()
         if tmp.empty or (tmp["Day Type"] == "Unknown").all():
-            st.info("Need 'Date' (or 'Day Type') to separate weekdays vs weekends.")
+            st.info("Need a Date (or an existing 'Day Type') to separate weekdays vs weekends.")
         else:
-            # Convert times to minutes since midnight for plotting
-            def to_minutes(t):
-                return t.hour * 60 + t.minute if pd.notnull(t) else np.nan
-            tmp["Start_m"] = tmp["Sleep Start"].apply(to_minutes)
-            tmp["End_m"] = tmp["Sleep End"].apply(to_minutes)
-            # Prefer using Date for x-axis if present
-            if "Date" in tmp.columns and tmp["Date"].notna().any():
-                plot_df = tmp.dropna(subset=["Date"]).copy()
+            def to_minutes(ts):
+                return ts.dt.hour * 60 + ts.dt.minute
+            tmp["Start_m"] = to_minutes(tmp[col_sleep_start])
+            tmp["End_m"] = to_minutes(tmp[col_sleep_end])
+            if col_date and col_date in tmp.columns and tmp[col_date].notna().any():
+                plot_df = tmp.dropna(subset=[col_date]).copy()
                 plot_df = plot_df.melt(
-                    id_vars=["Date", "Day Type"],
+                    id_vars=[col_date, "Day Type"],
                     value_vars=["Start_m", "End_m"],
                     var_name="Metric", value_name="Minutes"
                 )
                 plot_df["Metric"] = plot_df["Metric"].map({"Start_m": "Sleep Start", "End_m": "Sleep End"})
-                fig_time = px.line(
-                    plot_df.sort_values("Date"), x="Date", y="Minutes",
-                    color="Metric", line_dash="Day Type",
-                    hover_data=["Day Type"]
-                )
+                fig_time = px.line(plot_df.sort_values(col_date), x=col_date, y="Minutes",
+                                   color="Metric", line_dash="Day Type", hover_data=["Day Type"]) 
                 fig_time.update_layout(yaxis_title="Time (minutes since midnight)")
                 st.plotly_chart(fig_time, use_container_width=True)
             else:
-                # Fallback: average by Day Type only (two points per metric)
                 agg = tmp.groupby("Day Type", as_index=False)[["Start_m", "End_m"]].mean(numeric_only=True)
                 agg = agg.melt(id_vars=["Day Type"], value_vars=["Start_m", "End_m"], var_name="Metric", value_name="Minutes")
                 agg["Metric"] = agg["Metric"].map({"Start_m": "Sleep Start", "End_m": "Sleep End"})
