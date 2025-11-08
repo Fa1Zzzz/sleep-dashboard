@@ -282,16 +282,28 @@ with tab_viz:
     # ------------------------------------------------------------------
     # NEW: User-requested charts added below (use any dataset available)
 
-    # Helper to pick best data source that contains ALL required columns
+    # ---- Robust helpers (defensive against missing vars/cols) ----
+    def _df_or_empty(obj):
+        return obj if isinstance(obj, pd.DataFrame) else pd.DataFrame()
+
+    # Pull potentially defined frames safely
+    _f_primary = _df_or_empty(fdf)
+    _f_second_raw = _df_or_empty(globals().get('second_df'))
+    _f_second_filt = _df_or_empty(globals().get('fdf2'))
+    _f_second = _f_second_filt if not _f_second_filt.empty else _f_second_raw
+    _f_merged = _df_or_empty(globals().get('merged_df'))
+
+    def _has_cols(d, cols):
+        return (isinstance(d, pd.DataFrame) and not d.empty and all(c in d.columns for c in cols))
+
     def _choose_source(required_cols):
-        def has_cols(d, cols):
-            return (isinstance(d, pd.DataFrame) and not d.empty and all(c in d.columns for c in cols))
-        if has_cols(merged_df, required_cols):
-            return merged_df, "merged"
-        if has_cols(second_df, required_cols):
-            return fdf2, "second"
-        if has_cols(fdf, required_cols):
-            return fdf, "primary"
+        # prefer merged > filtered second > raw second > primary
+        if _has_cols(_f_merged, required_cols):
+            return _f_merged, 'merged'
+        if _has_cols(_f_second, required_cols):
+            return _f_second, 'second'
+        if _has_cols(_f_primary, required_cols):
+            return _f_primary, 'primary'
         return pd.DataFrame(), None
 
     def _union_columns(*dfs):
@@ -302,13 +314,10 @@ with tab_viz:
         return sorted(cols)
 
     def _guess(cols_union, *candidates):
-        # simple case-insensitive contains/equals match
         lower = {c.lower(): c for c in cols_union}
         for cand in candidates:
-            cand_l = cand.lower()
-            if cand_l in lower:
-                return lower[cand_l]
-        # contains
+            if cand.lower() in lower:
+                return lower[cand.lower()]
         for c in cols_union:
             cl = c.lower()
             if any(tok in cl for tok in [x.lower() for x in candidates]):
@@ -318,43 +327,17 @@ with tab_viz:
     st.markdown("---")
     st.subheader("Additional Visualizations (Requested)")
 
-    # -------- Mapping UI (so your columns don't have to match exact names) --------
+    # -------- Column Mapping (handles different column names) --------
     with st.expander("Column Mapping (use if your columns have different names)", expanded=False):
-        cols_union = _union_columns(fdf, second_df, merged_df)
-        col_study_hours = st.selectbox(
-            "Study Hours column",
-            options=["(auto-detect)"] + cols_union,
-            index=0,
-            help="Select if your Study Hours column has a different name."
-        )
-        col_univ_year = st.selectbox(
-            "University Year column",
-            options=["(auto-detect)"] + cols_union,
-            index=0
-        )
-        col_caffeine = st.selectbox(
-            "Caffeine Intake column",
-            options=["(auto-detect)"] + cols_union,
-            index=0
-        )
-        col_sleep_start = st.selectbox(
-            "Sleep Start column",
-            options=["(auto-detect)"] + cols_union,
-            index=0
-        )
-        col_sleep_end = st.selectbox(
-            "Sleep End column",
-            options=["(auto-detect)"] + cols_union,
-            index=0
-        )
-        col_date = st.selectbox(
-            "Date column (optional but recommended)",
-            options=["(auto-detect)"] + cols_union,
-            index=0
-        )
+        cols_union = _union_columns(_f_primary, _f_second, _f_merged)
+        col_study_hours = st.selectbox("Study Hours column", ["(auto-detect)"] + cols_union, index=0)
+        col_univ_year  = st.selectbox("University Year column", ["(auto-detect)"] + cols_union, index=0)
+        col_caffeine   = st.selectbox("Caffeine Intake column", ["(auto-detect)"] + cols_union, index=0)
+        col_sleep_start= st.selectbox("Sleep Start column", ["(auto-detect)"] + cols_union, index=0)
+        col_sleep_end  = st.selectbox("Sleep End column", ["(auto-detect)"] + cols_union, index=0)
+        col_date       = st.selectbox("Date column (optional)", ["(auto-detect)"] + cols_union, index=0)
 
-    # Autodetect fallbacks if user leaves mapping as auto
-    cols_union_all = _union_columns(fdf, second_df, merged_df)
+    cols_union_all = _union_columns(_f_primary, _f_second, _f_merged)
     if col_study_hours == "(auto-detect)":
         col_study_hours = _guess(cols_union_all, "Study Hours", "StudyHours", "Hours of Study", "study")
     if col_univ_year == "(auto-detect)":
@@ -370,26 +353,24 @@ with tab_viz:
 
     # 1) Sleep Duration vs. Study Hours (scatter)
     st.markdown("**Sleep Duration vs Study Hours**")
-    req_cols = [c for c in ["Sleep Duration", col_study_hours] if c]
+    req_cols = [x for x in ["Sleep Duration", col_study_hours] if x]
     dsrc, dname = _choose_source(req_cols)
-    if dname is None or col_study_hours is None or "Sleep Duration" not in dsrc.columns or col_study_hours not in dsrc.columns:
+    if dname is None or col_study_hours is None or dsrc.empty:
         st.info("Missing columns for this chart: needs 'Sleep Duration' and a mapped 'Study Hours' column.")
     else:
         tmp = dsrc.copy()
         for c in ["Sleep Duration", col_study_hours]:
             tmp[c] = pd.to_numeric(tmp[c], errors="coerce")
         color_col = "Gender" if "Gender" in tmp.columns else None
-        fig_sd_sh = px.scatter(
-            tmp, x=col_study_hours, y="Sleep Duration", color=color_col,
-            trendline="ols", hover_data=[c for c in ["Age","Occupation","BMI Category","Sleep Disorder"] if c in tmp.columns]
-        )
+        fig_sd_sh = px.scatter(tmp, x=col_study_hours, y="Sleep Duration", color=color_col, trendline="ols",
+                               hover_data=[c for c in ["Age","Occupation","BMI Category","Sleep Disorder"] if c in tmp.columns])
         st.plotly_chart(fig_sd_sh, use_container_width=True)
 
     # 2) Sleep Quality by University Year (box)
     st.markdown("**Sleep Quality by University Year**")
-    req_cols = [c for c in ["Quality of Sleep", col_univ_year] if c]
+    req_cols = [x for x in ["Quality of Sleep", col_univ_year] if x]
     dsrc, dname = _choose_source(req_cols)
-    if dname is None or col_univ_year is None or "Quality of Sleep" not in dsrc.columns or col_univ_year not in dsrc.columns:
+    if dname is None or col_univ_year is None or dsrc.empty:
         st.info("Missing columns for this chart: needs 'Quality of Sleep' and a mapped 'University Year' column.")
     else:
         tmp = dsrc.copy()
@@ -398,9 +379,9 @@ with tab_viz:
 
     # 3) Caffeine Intake vs. Sleep Duration (scatter)
     st.markdown("**Caffeine Intake vs Sleep Duration**")
-    req_cols = [c for c in [col_caffeine, "Sleep Duration"] if c]
+    req_cols = [x for x in [col_caffeine, "Sleep Duration"] if x]
     dsrc, dname = _choose_source(req_cols)
-    if dname is None or col_caffeine is None or "Sleep Duration" not in dsrc.columns or col_caffeine not in dsrc.columns:
+    if dname is None or col_caffeine is None or dsrc.empty:
         st.info("Missing columns for this chart: needs a mapped 'Caffeine Intake' and 'Sleep Duration'.")
     else:
         tmp = dsrc.copy()
@@ -413,18 +394,16 @@ with tab_viz:
     # 4) Physical Activity and Sleep Quality — already present above
     st.caption("*Note: 'Physical Activity vs Quality of Sleep' above covers request #4.*")
 
-    # 5) Sleep Start and End Times — line chart, weekdays vs weekends
+    # 5) Sleep Start and End Times — Weekdays vs Weekends
     st.markdown("**Sleep Start and End Times — Weekdays vs Weekends**")
-    needed = [c for c in [col_sleep_start, col_sleep_end] if c]
-    # Prefer dataset that also includes 'Date'
+    needed = [x for x in [col_sleep_start, col_sleep_end] if x]
     dsrc_date, dname_date = _choose_source(needed + ([col_date] if col_date else []))
     dsrc_only, dname_only = _choose_source(needed)
     dsrc = dsrc_date if dname_date is not None else dsrc_only
-    if dsrc is None or dsrc.empty or any(c not in dsrc.columns for c in needed):
-        st.info("Missing columns for this chart: map 'Sleep Start' and 'Sleep End' (and optionally 'Date').")
+    if dsrc.empty:
+        st.info("Missing columns: map 'Sleep Start' and 'Sleep End' (and optionally 'Date').")
     else:
         tmp = dsrc.copy()
-        # Parse to datetime if possible
         for c in [col_sleep_start, col_sleep_end]:
             tmp[c] = pd.to_datetime(tmp[c], errors="coerce")
         if col_date and col_date in tmp.columns:
@@ -439,17 +418,12 @@ with tab_viz:
         if tmp.empty or (tmp["Day Type"] == "Unknown").all():
             st.info("Need a Date (or an existing 'Day Type') to separate weekdays vs weekends.")
         else:
-            def to_minutes(ts):
-                return ts.dt.hour * 60 + ts.dt.minute
-            tmp["Start_m"] = to_minutes(tmp[col_sleep_start])
-            tmp["End_m"] = to_minutes(tmp[col_sleep_end])
+            tmp["Start_m"] = tmp[col_sleep_start].dt.hour * 60 + tmp[col_sleep_start].dt.minute
+            tmp["End_m"]   = tmp[col_sleep_end].dt.hour   * 60 + tmp[col_sleep_end].dt.minute
             if col_date and col_date in tmp.columns and tmp[col_date].notna().any():
                 plot_df = tmp.dropna(subset=[col_date]).copy()
-                plot_df = plot_df.melt(
-                    id_vars=[col_date, "Day Type"],
-                    value_vars=["Start_m", "End_m"],
-                    var_name="Metric", value_name="Minutes"
-                )
+                plot_df = plot_df.melt(id_vars=[col_date, "Day Type"], value_vars=["Start_m", "End_m"],
+                                       var_name="Metric", value_name="Minutes")
                 plot_df["Metric"] = plot_df["Metric"].map({"Start_m": "Sleep Start", "End_m": "Sleep End"})
                 fig_time = px.line(plot_df.sort_values(col_date), x=col_date, y="Minutes",
                                    color="Metric", line_dash="Day Type", hover_data=["Day Type"]) 
