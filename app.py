@@ -396,16 +396,26 @@ with tab_viz:
 
     # 5) Sleep Start and End Times — Weekdays vs Weekends
     st.markdown("**Sleep Start and End Times — Weekdays vs Weekends**")
+
     needed = [x for x in [col_sleep_start, col_sleep_end] if x]
+    # Prefer dataset that also includes 'Date'
     dsrc_date, dname_date = _choose_source(needed + ([col_date] if col_date else []))
     dsrc_only, dname_only = _choose_source(needed)
     dsrc = dsrc_date if dname_date is not None else dsrc_only
-    if dsrc.empty:
+
+    def _both_present(df, cols):
+        return isinstance(df, pd.DataFrame) and not df.empty and all(c in df.columns for c in cols)
+
+    if not _both_present(dsrc, needed):
         st.info("Missing columns: map 'Sleep Start' and 'Sleep End' (and optionally 'Date').")
     else:
         tmp = dsrc.copy()
-        for c in [col_sleep_start, col_sleep_end]:
+        # Convert only existing columns defensively
+        exist_time_cols = [c for c in [col_sleep_start, col_sleep_end] if c in tmp.columns]
+        for c in exist_time_cols:
             tmp[c] = pd.to_datetime(tmp[c], errors="coerce")
+
+        # Day type
         if col_date and col_date in tmp.columns:
             tmp[col_date] = pd.to_datetime(tmp[col_date], errors="coerce")
             dow = tmp[col_date].dt.dayofweek
@@ -414,12 +424,19 @@ with tab_viz:
             tmp["Day Type"] = tmp["Day Type"].astype(str)
         else:
             tmp["Day Type"] = "Unknown"
-        tmp = tmp.dropna(subset=[col_sleep_start, col_sleep_end]).copy()
+
+        tmp = tmp.dropna(subset=exist_time_cols).copy()
         if tmp.empty or (tmp["Day Type"] == "Unknown").all():
             st.info("Need a Date (or an existing 'Day Type') to separate weekdays vs weekends.")
         else:
-            tmp["Start_m"] = tmp[col_sleep_start].dt.hour * 60 + tmp[col_sleep_start].dt.minute
-            tmp["End_m"]   = tmp[col_sleep_end].dt.hour   * 60 + tmp[col_sleep_end].dt.minute
+            # Minutes since midnight
+            def to_minutes(ts):
+                return ts.dt.hour * 60 + ts.dt.minute
+            start_col = col_sleep_start
+            end_col = col_sleep_end
+            tmp["Start_m"] = to_minutes(tmp[start_col])
+            tmp["End_m"] = to_minutes(tmp[end_col])
+
             if col_date and col_date in tmp.columns and tmp[col_date].notna().any():
                 plot_df = tmp.dropna(subset=[col_date]).copy()
                 plot_df = plot_df.melt(id_vars=[col_date, "Day Type"], value_vars=["Start_m", "End_m"],
