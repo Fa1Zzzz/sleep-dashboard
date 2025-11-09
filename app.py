@@ -10,10 +10,72 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import os
+import random  # <-- NEW
 
 # ------------------ Page Setup ------------------
 st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
+
+# ------------------ Night-sky Background (Full-page) ------------------
+def render_night_sky(star_count: int = 230, seed: int = 7):
+    """
+    Renders a calm blue night-sky background with randomly placed twinkling stars,
+    behind the entire Streamlit app. Does not affect any charts or layout.
+    """
+    random.seed(seed)
+
+    # Base styles (background + stacking so content stays clickable)
+    css = """
+    <style>
+      .stApp {
+        background: radial-gradient(110% 140% at 50% 100%, #0b1f3c 0%, #0a1a33 45%, #081428 100%) !important;
+      }
+      /* Ensure main content stays above the star layer */
+      [data-testid="stAppViewContainer"] .main, [data-testid="stSidebar"] {
+        position: relative; z-index: 1;
+      }
+      /* Star field container fixed to the viewport */
+      #starfield {
+        position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+      }
+      .star {
+        position: absolute; border-radius: 50%;
+        background: rgba(255,255,255,0.95);
+        box-shadow: 0 0 6px rgba(255,255,255,0.85);
+        /* Subtle twinkle */
+        animation-name: twinkle;
+        animation-iteration-count: infinite;
+        animation-timing-function: ease-in-out;
+      }
+      @keyframes twinkle {
+        0%, 100% { opacity: var(--op-min, 0.55); transform: scale(1); }
+        50%      { opacity: 1; transform: scale(1.08); }
+      }
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+    # Build star elements with randomized size/position/animation
+    stars_html_parts = []
+    for _ in range(star_count):
+        top_vh = f"{random.uniform(0, 100):.3f}vh"
+        left_vw = f"{random.uniform(0, 100):.3f}vw"
+        size_px = f"{random.choice([1, 1, 1, 2, 2, 3])}px"   # more small stars than big
+        dur_s = f"{random.uniform(1.8, 4.6):.2f}s"
+        delay_s = f"{random.uniform(0, 3.0):.2f}s"
+        op_min = f"{random.uniform(0.35, 0.75):.2f}"
+
+        stars_html_parts.append(
+            f'<span class="star" style="top:{top_vh};left:{left_vw};'
+            f'width:{size_px};height:{size_px};'
+            f'animation-duration:{dur_s};animation-delay:{delay_s};'
+            f'--op-min:{op_min};"></span>'
+        )
+    field_html = f'<div id="starfield">{"".join(stars_html_parts)}</div>'
+    st.markdown(field_html, unsafe_allow_html=True)
+
+# Render the background before any visible content
+render_night_sky()
 
 st.title("Sleep Health & Lifestyle Dashboard")
 st.caption("Explore sleep patterns and lifestyle-health factors. Second dataset is bundled and previewed separately.")
@@ -45,7 +107,7 @@ def load_data(path: str) -> pd.DataFrame:
 
     # optional: split blood pressure
     if "Blood Pressure" in df.columns:
-        bp = df["Blood Pressure"].str.extract(r"(?P<Systolic>\d+)\s*/\s*(?P<Diastolic>\d+)")
+        bp = df["Blood Pressure"].str.extract(r"(?P<Systolic>\\d+)\\s*/\\s*(?P<Diastolic>\\d+)")
         df[["Systolic", "Diastolic"]] = bp.astype("float")
 
     # derived flag
