@@ -14,6 +14,40 @@ import os
 # ------------------ Page Setup ------------------
 st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
+st.markdown("""
+<style>
+@keyframes twinkle {
+  0% {opacity: 0.6;}
+  50% {opacity: 1;}
+  100% {opacity: 0.6;}
+}
+
+.stars {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.star {
+  position: absolute;
+  color: #ffffff88;
+  font-size: 14px;
+  animation: twinkle 2s infinite ease-in-out;
+}
+</style>
+
+<div class="stars">
+    <div class="star" style="top:10%; left:20%;">✦</div>
+    <div class="star" style="top:30%; left:70%; animation-delay:0.4s;">✧</div>
+    <div class="star" style="top:60%; left:40%; animation-delay:1s;">✦</div>
+    <div class="star" style="top:80%; left:10%; animation-delay:0.7s;">✧</div>
+</div>
+
+""", unsafe_allow_html=True)
+
 
 st.title("Sleep Health & Lifestyle Dashboard")
 st.caption("Explore sleep patterns and lifestyle-health factors. Second dataset is bundled and previewed separately.")
@@ -437,3 +471,4 @@ with tab_end:
         "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
         "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
+
