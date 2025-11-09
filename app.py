@@ -14,89 +14,6 @@ import os
 # ------------------ Page Setup ------------------
 st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
-st.markdown("""
-<style>
-
-div[data-baseweb="tag"] {
-    background-color: #89CFF0 !important;
-    color: #000000 !important;
-    border-radius: 6px !important;
-    border: none !important;
-}
-
-/* إزالة الأحمر عند المرور */
-div[data-baseweb="tag"]:hover {
-    background-color: #73b7d8 !important;
-}
-
-/* لون علامة الإغلاق (X) */
-div[data-baseweb="tag"] span {
-    color: #000000 !important;
-}
-
-/* صندوق الـ multiselect */
-div[data-baseweb="select"] > div {
-    background-color: #1A1F36 !important;
-    color: #FFFFFF !important;
-}
-
-/* القائمة المنسدلة */
-ul[role="listbox"] {
-    background-color: #1A1F36 !important;
-}
-
-ul[role="listbox"] li {
-    background-color: #1A1F36 !important;
-    color: #FFFFFF !important;
-}
-
-ul[role="listbox"] li:hover {
-    background-color: #89CFF0 !important;
-    color: #000000 !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-/* ===== خلفية ليلية داكنة ===== */
-body, .stApp {
-    background-color: #0A1128 !important;
-}
-
-/* ===== ألوان الكروت ===== */
-.block-container {
-    background-color: #1A1F36 !important;
-    border-radius: 12px;
-    padding: 20px;
-}
-
-/* ===== لون النص ===== */
-.stMarkdown, .css-10trblm, p, span, h1, h2, h3, h4, h5, h6 {
-    color: #FFFFFF !important;
-}
-
-/* ===== لون الأزرار ===== */
-.stButton>button {
-    background-color: #89CFF0 !important;
-    color: #000000 !important;
-    border-radius: 8px;
-}
-
-/* ===== النجوم (اختياري) ===== */
-body:before {
-    content: "";
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: url("https://i.imgur.com/9QJt8WY.png") repeat;
-    opacity: 0.18;
-    pointer-events: none;
-}
-</style>
-""", unsafe_allow_html=True)
-
 
 st.title("Sleep Health & Lifestyle Dashboard")
 st.caption("Explore sleep patterns and lifestyle-health factors. Second dataset is bundled and previewed separately.")
@@ -520,5 +437,3 @@ with tab_end:
         "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
         "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
-
-
