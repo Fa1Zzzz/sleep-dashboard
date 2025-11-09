@@ -111,6 +111,100 @@ render_starry_sky(num_stars=220, num_meteors=6)
 
 
 st.title("Sleep Health & Lifestyle Dashboard")
+# ===== Starry night background (behind the whole app) =====
+import random
+
+N_STARS = 180          # عدد النجوم
+N_SHOOTS = 6           # عدد الشهب
+
+# CSS: النجوم/الشهب خلف كل شيء + بدون تعطيل الضغط على الداشبورد
+STAR_CSS = """
+<style>
+/* نجعل الحاوية الرئيسية فوق الخلفية */
+[data-testid="stAppViewContainer"], .block-container, [data-testid="stSidebar"] {
+  position: relative; z-index: 2;
+}
+
+/* طبقة السماء خلفية تمتد لكل الصفحة */
+#starry-sky {
+  position: fixed; inset: 0;
+  z-index: 0;                /* خلف المحتوى */
+  pointer-events: none;      /* لا تمنع الضغط أو السحب */
+  overflow: hidden;
+  background: radial-gradient(1200px 800px at 50% -10%, rgba(20,35,70,.35), transparent 60%),
+              linear-gradient(#071426, #0b1730); /* ليل هادئ */
+}
+
+/* النقاط (نجوم) */
+#starry-sky .star {
+  position: absolute;
+  background: #ffffff;
+  border-radius: 50%;
+  opacity: .9;
+  filter: drop-shadow(0 0 4px rgba(255,255,255,.65));
+  animation-name: twinkle;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+/* الشهب */
+#starry-sky .shoot {
+  position: absolute;
+  width: 120px; height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.95) 40%, rgba(255,255,255,0) 100%);
+  border-radius: 2px;
+  opacity: .9;
+  transform: rotate(-20deg);
+  animation: shoot 2.2s linear infinite;
+}
+
+/* وميض النجوم */
+@keyframes twinkle {
+  0%, 100% { transform: scale(1);   opacity: .85; }
+  50%      { transform: scale(1.6); opacity: .35; }
+}
+
+/* مسار الشهاب (يمر عشوائياً قطرياً) */
+@keyframes shoot {
+  0%   { transform: translate3d(0,0,0) rotate(-20deg); opacity: 0; }
+  5%   { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translate3d(-55vw, 35vh, 0) rotate(-20deg); opacity: 0; }
+}
+</style>
+"""
+
+# نص HTML للنجوم والشهب (مواقع وأحجام وزمن عشوائي)
+stars_html = []
+for _ in range(N_STARS):
+    top_vh  = f"{random.uniform(0, 100):.2f}vh"
+    left_vw = f"{random.uniform(0, 100):.2f}vw"
+    size_px = f"{random.uniform(0.8, 2.0):.2f}px"
+    dur_s   = f"{random.uniform(2.5, 7.5):.2f}s"
+    delay_s = f"{random.uniform(0, 6):.2f}s"
+    stars_html.append(
+        f'<span class="star" style="top:{top_vh};left:{left_vw};'
+        f'width:{size_px};height:{size_px};animation-duration:{dur_s};animation-delay:{delay_s};"></span>'
+    )
+
+shoots_html = []
+for _ in range(N_SHOOTS):
+    # نبدأ من يمين/أعلى بنسب مختلفة عشان يبان عشوائي
+    top_vh  = f"{random.uniform(0, 60):.2f}vh"
+    left_vw = f"{random.uniform(40, 100):.2f}vw"
+    delay_s = f"{random.uniform(0, 6):.2f}s"
+    speed_s = f"{random.uniform(1.8, 3.4):.2f}s"
+    shoots_html.append(
+        f'<span class="shoot" style="top:{top_vh};left:{left_vw};'
+        f'animation-delay:{delay_s};animation-duration:{speed_s};"></span>'
+    )
+
+st.markdown(
+    STAR_CSS + f'<div id="starry-sky">{"".join(stars_html + shoots_html)}</div>',
+    unsafe_allow_html=True
+)
+# ===== end starry background =====
+
 st.caption("Explore sleep patterns and lifestyle-health factors. Second dataset is bundled and previewed separately.")
 
 # ------------------ Starry Sky (Decoration Only) ------------------
@@ -619,4 +713,5 @@ with tab_end:
         "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
         "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
+
 
