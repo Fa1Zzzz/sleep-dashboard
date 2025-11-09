@@ -14,6 +14,65 @@ import os
 # ------------------ Page Setup ------------------
 st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
+# ضعها أعلى الملف بعد الاستيرادات و set_page_config
+
+def add_starry_night():
+    import streamlit as st
+    st.markdown(
+        """
+        <style>
+        /* خلفية ليلية ناعمة */
+        .stApp {
+          background: linear-gradient(180deg,#0A1128 0%, #1A1F36 60%, #0A1128 100%) !important;
+        }
+
+        /* طبقتا نجوم فوق الخلفية (لا تمنع التفاعل) */
+        .stApp::before, .stApp::after {
+          content: "";
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;              /* تحت المحتوى */
+          background-repeat: repeat;
+          opacity: .85;
+        }
+
+        /* طبقة أولى نجوم كثيفة ببطء */
+        .stApp::before {
+          background-image:
+            radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,.9) 1px, transparent 1px),
+            radial-gradient(1px 1px at 50px 80px, rgba(255,255,255,.7) 1px, transparent 1px),
+            radial-gradient(1px 1px at 130px 170px, rgba(255,255,255,.8) 1px, transparent 1px),
+            radial-gradient(2px 2px at 90px 120px, rgba(255,255,255,.6) 1px, transparent 1px);
+          background-size: 200px 200px, 300px 300px, 250px 250px, 350px 350px;
+          animation: drift 60s linear infinite;
+        }
+
+        /* طبقة ثانية نجوم أكبر بحركة عكسية لعمق بسيط */
+        .stApp::after {
+          background-image:
+            radial-gradient(2px 2px at 40px 60px, rgba(255,255,255,.7) 1px, transparent 1px),
+            radial-gradient(1px 1px at 100px 140px, rgba(255,255,255,.6) 1px, transparent 1px),
+            radial-gradient(2px 2px at 160px 30px, rgba(255,255,255,.5) 1px, transparent 1px);
+          background-size: 350px 350px, 420px 420px, 300px 300px;
+          animation: drift 120s linear infinite reverse;
+        }
+
+        @keyframes drift {
+          from { transform: translateY(0); }
+          to   { transform: translateY(-2000px); }
+        }
+
+        /* ارفع كل المحتوى فوق طبقة النجوم */
+        .main, [data-testid="stSidebar"], header { position: relative; z-index: 1; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+# نادِ الدالة بعد set_page_config مباشرة
+add_starry_night()
+
 st.markdown("""
 <style>
 @keyframes twinkle {
@@ -471,4 +530,5 @@ with tab_end:
         "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
         "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
+
 
