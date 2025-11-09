@@ -15,6 +15,100 @@ import os
 # ------------------ Page Setup ------------------
 st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
+# --- Starry night background (full-page) ---
+import random
+import streamlit as st
+
+def render_starry_sky(num_stars: int = 180, num_meteors: int = 5):
+    # CSS: طبقة ثابتة تغطي الشاشة كلها + أنيميشن للنجوم والشهب
+    css = """
+    <style>
+      /* نرفع محتوى ستريملِت فوق النجوم */
+      .stApp > div:nth-child(1) { position: relative; z-index: 1; }
+      .block-container { position: relative; z-index: 2; }
+
+      /* طبقة السماء */
+      #starry-sky {
+        position: fixed;   /* يغطي الشاشة كلها حتى مع السكروول */
+        inset: 0;
+        z-index: 0;
+        pointer-events: none; /* ما يعطل النقر على عناصر الصفحة */
+        background: radial-gradient(ellipse at 50% 120%, #0a1128 0%, #0a1128 35%, #070d20 60%, #060a18 100%);
+        overflow: hidden;
+      }
+
+      /* النجمة */
+      .star {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.88);
+        box-shadow: 0 0 6px rgba(255,255,255,0.6), 0 0 12px rgba(120,180,255,0.35);
+        animation-name: twinkle;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+      }
+
+      /* الشهاب */
+      .meteor {
+        position: absolute;
+        width: 120px;  /* طول الشهاب */
+        height: 2px;
+        background: linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,255,255,0) 70%);
+        border-radius: 2px;
+        filter: drop-shadow(0 0 6px rgba(180,210,255,0.7));
+        transform: rotate(-25deg);
+        animation: shoot var(--fly, 2.8s) linear infinite;
+        opacity: 0.0;
+      }
+
+      @keyframes twinkle {
+        0%, 100% { opacity: 0.75; transform: scale(1);}
+        50%      { opacity: 0.25; transform: scale(0.8);}
+      }
+
+      @keyframes shoot {
+        0%   { opacity: 0;   transform: translate3d(var(--sx, -10vw), var(--sy, -10vh), 0) rotate(-25deg); }
+        10%  { opacity: 1; }
+        80%  { opacity: 1; }
+        100% { opacity: 0; transform: translate3d(var(--ex, 110vw), var(--ey, 60vh), 0) rotate(-25deg); }
+      }
+    </style>
+    """
+
+    # نولّد عناصر النجوم بحجم/سرعة/موقع عشوائي
+    stars_html = []
+    for _ in range(num_stars):
+        top = f"{random.uniform(0, 100):.2f}vh"
+        left = f"{random.uniform(0, 100):.2f}vw"
+        size = random.uniform(0.8, 1.8)  # px
+        dur = f"{random.uniform(3.5, 7.5):.2f}s"
+        delay = f"{random.uniform(0, 6):.2f}s"
+        stars_html.append(
+            f"<span class='star' style='top:{top}; left:{left}; width:{size}px; height:{size}px; animation-duration:{dur}; animation-delay:{delay};'></span>"
+        )
+
+    # شهب لا نهائية عمليًا: نكررها مع اختلاف التأخيرات والمسارات
+    meteors_html = []
+    for _ in range(num_meteors):
+        # نقطة انطلاق ومسار الشهاب (باستخدام متغيرات CSS مخصّصة)
+        sy = random.uniform(-10, 40)   # vh
+        ey = sy + random.uniform(30, 80)
+        sx = random.uniform(-20, 0)    # vw
+        ex = sx + random.uniform(120, 170)
+        delay = f"{random.uniform(0, 6):.2f}s"
+        fly = f"{random.uniform(2.4, 4.2):.2f}s"
+        meteors_html.append(
+            f"<span class='meteor' style='top:0; left:0; "
+            f"--sx:{sx}vw; --sy:{sy}vh; --ex:{ex}vw; --ey:{ey}vh; "
+            f"--fly:{fly}; animation-delay:{delay};'></span>"
+        )
+
+    container = f"<div id='starry-sky'>{''.join(stars_html)}{''.join(meteors_html)}</div>"
+    st.markdown(css + container, unsafe_allow_html=True)
+
+# نادِ الفنكشن مرة وحدة في أعلى الصفحة
+render_starry_sky(num_stars=220, num_meteors=6)
+
 
 st.title("Sleep Health & Lifestyle Dashboard")
 st.caption("Explore sleep patterns and lifestyle-health factors. Second dataset is bundled and previewed separately.")
@@ -525,3 +619,4 @@ with tab_end:
         "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
         "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
+
