@@ -1,10 +1,10 @@
-# app.py — Final build (primary charts + exact insights text + starry sky)
-# -----------------------------------------------------------
+# app.py — Final build (primary charts + exact insights text + full-page starry background)
+# ----------------------------------------------------------------------------------------
 # - Loads primary + bundled second dataset (no upload UI)
 # - All charts live under "Visualizations" only
 # - Second dataset quick charts: 1,2,3,5 (no PA vs Quality)
 # - Insights under each chart EXACTLY as provided
-# - Decorative starry night (infinite stars + meteors), no content changes
+# - Adds full-page starry night background with endless twinkling stars + meteors
 
 import streamlit as st
 import pandas as pd
@@ -16,95 +16,127 @@ import os
 st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
 
+# ---------- Inject Starry Background (CSS only) ----------
+def inject_starry_background():
+    st.markdown("""
+    <style>
+    /* Base gradient for a calm night */
+    .stApp {
+      background: linear-gradient(180deg, #0A1128 0%, #0D1634 55%, #0B1020 100%) !important;
+    }
+
+    /* Make app content above the background layers */
+    .stMain, .block-container { position: relative; z-index: 1; }
+
+    /* Full-page fixed sky layer */
+    #starry-sky, #starry-sky * { position: fixed; inset: 0; pointer-events: none; }
+    #starry-sky { z-index: 0; }
+
+    /* --- Twinkling stars using box-shadows --- */
+    .stars, .stars2, .stars3 {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: transparent;
+    }
+
+    /* Layer 1 (many tiny stars) */
+    .stars:after {
+      content: "";
+      position: absolute;
+      top: -1000px; /* spread */
+      width: 2px; height: 2px; background: transparent;
+      box-shadow:
+        20vw 10vh #FFFFFF, 35vw 22vh #CFE8FF, 50vw 15vh #FFFFFF, 65vw 30vh #E6F0FF,
+        80vw 8vh #FFFFFF, 10vw 35vh #DDEBFF, 25vw 45vh #FFFFFF, 40vw 38vh #BFD9FF,
+        55vw 50vh #FFFFFF, 70vw 60vh #E6F0FF, 85vw 48vh #FFFFFF, 15vw 62vh #CFE8FF,
+        30vw 72vh #FFFFFF, 45vw 80vh #E6F0FF, 60vw 68vh #FFFFFF, 75vw 78vh #BFD9FF,
+        90vw 70vh #FFFFFF, 5vw  82vh #E6F0FF, 18vw 90vh #FFFFFF, 33vw 88vh #DDEBFF,
+        48vw 92vh #FFFFFF, 63vw 86vh #E6F0FF, 78vw 94vh #FFFFFF, 93vw 84vh #BFD9FF;
+      animation: twinkle 3.2s infinite ease-in-out;
+      opacity: .9;
+    }
+
+    /* Layer 2 (slightly bigger, slower) */
+    .stars2:after {
+      content: "";
+      position: absolute;
+      top: -1000px;
+      width: 3px; height: 3px; background: transparent;
+      box-shadow:
+        12vw 18vh #FFFFFF, 28vw 8vh  #E6F0FF, 44vw 26vh #FFFFFF, 58vw 18vh #CFE8FF,
+        72vw 28vh #FFFFFF, 86vw 20vh #DDEBFF, 8vw  52vh #FFFFFF, 22vw 60vh #E6F0FF,
+        36vw 56vh #FFFFFF, 50vw 64vh #BFD9FF, 64vw 52vh #FFFFFF, 78vw 66vh #E6F0FF,
+        92vw 58vh #FFFFFF, 6vw  72vh #DDEBFF, 20vw 84vh #FFFFFF, 34vw 74vh #E6F0FF,
+        48vw 82vh #FFFFFF, 62vw 76vh #BFD9FF, 76vw 90vh #FFFFFF, 90vw 78vh #E6F0FF;
+      animation: twinkle 4.5s infinite ease-in-out;
+      opacity: .7;
+    }
+
+    /* Layer 3 (few, slow twinkles) */
+    .stars3:after {
+      content: "";
+      position: absolute;
+      top: -1000px;
+      width: 4px; height: 4px; background: transparent;
+      box-shadow:
+        18vw 24vh #FFFFFF, 42vw 12vh #E6F0FF, 66vw 22vh #FFFFFF, 14vw 44vh #DDEBFF,
+        38vw 48vh #FFFFFF, 62vw 40vh #CFE8FF, 86vw 46vh #FFFFFF, 26vw 70vh #E6F0FF,
+        50vw 78vh #FFFFFF, 74vw 74vh #DDEBFF, 90vw 68vh #FFFFFF;
+      animation: twinkle 5.8s infinite ease-in-out;
+      opacity: .55;
+    }
+
+    @keyframes twinkle { 50% { opacity: .2; } }
+
+    /* --- Shooting meteors --- */
+    .meteors {
+      position: absolute; inset: 0; overflow: visible;
+    }
+    .meteors i {
+      position: absolute;
+      width: 140px; height: 2px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0));
+      border-radius: 2px;
+      opacity: 0;
+      transform: rotate(315deg) translate3d(0,0,0);
+      animation: shoot 6s linear infinite;
+      filter: drop-shadow(0 0 6px rgba(255,255,255,.7));
+    }
+    /* Randomize positions & delays */
+    .meteors i:nth-child(1)  { top: 12%; left: 10%; animation-delay: 0s;  }
+    .meteors i:nth-child(2)  { top: 22%; left: 5%;  animation-delay: 1.2s;}
+    .meteors i:nth-child(3)  { top: 8%;  left: 28%; animation-delay: 2.4s;}
+    .meteors i:nth-child(4)  { top: 30%; left: 18%; animation-delay: 3.6s;}
+    .meteors i:nth-child(5)  { top: 16%; left: 36%; animation-delay: 4.8s;}
+    .meteors i:nth-child(6)  { top: 40%; left: 8%;  animation-delay: 6.0s;}
+    .meteors i:nth-child(7)  { top: 6%;  left: 60%; animation-delay: 7.2s;}
+    .meteors i:nth-child(8)  { top: 28%; left: 48%; animation-delay: 8.4s;}
+    .meteors i:nth-child(9)  { top: 18%; left: 74%; animation-delay: 9.6s;}
+    .meteors i:nth-child(10) { top: 34%; left: 82%; animation-delay: 10.8s;}
+
+    @keyframes shoot {
+      0%   { opacity: 0; transform: rotate(315deg) translateX(0); }
+      4%   { opacity: 1; }
+      20%  { opacity: 0; transform: rotate(315deg) translateX(900px); }
+      100% { opacity: 0; transform: rotate(315deg) translateX(900px); }
+    }
+    </style>
+
+    <div id="starry-sky" aria-hidden="true">
+      <div class="stars"></div>
+      <div class="stars2"></div>
+      <div class="stars3"></div>
+      <div class="meteors">
+        <i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+inject_starry_background()
+
 st.title("Sleep Health & Lifestyle Dashboard")
 st.caption("Explore sleep patterns and lifestyle-health factors. Second dataset is bundled and previewed separately.")
-
-# ------------------ Starry Sky (Decoration Only) ------------------
-def render_starry_sky(n_stars: int = 160, n_meteors: int = 6, seed: int = 42):
-    rng = np.random.default_rng(seed)
-    # Random positions/sizes/timings
-    star_tops = rng.uniform(0, 100, n_stars)   # vh
-    star_lefts = rng.uniform(0, 100, n_stars)  # vw
-    star_sizes = rng.uniform(0.8, 2.2, n_stars)  # px
-    star_durs = rng.uniform(2.5, 6.5, n_stars)   # s
-    star_delays = rng.uniform(0, 6, n_stars)     # s
-
-    # Meteors start off-screen to the right and shoot diagonally left-down
-    met_tops = rng.uniform(0, 60, n_meteors)      # vh
-    met_lefts = rng.uniform(110, 180, n_meteors)  # vw (start outside)
-    met_durs = rng.uniform(3.5, 8.0, n_meteors)   # s
-    met_delays = rng.uniform(0, 14, n_meteors)    # s
-
-    # Build HTML
-    stars_html = "\n".join(
-        f'<span class="star" style="top:{t:.2f}vh; left:{l:.2f}vw; width:{s:.2f}px; height:{s:.2f}px; '
-        f'animation-duration:{d:.2f}s; animation-delay:{dl:.2f}s;"></span>'
-        for t, l, s, d, dl in zip(star_tops, star_lefts, star_sizes, star_durs, star_delays)
-    )
-    meteors_html = "\n".join(
-        f'<span class="meteor" style="top:{t:.2f}vh; left:{l:.2f}vw; '
-        f'animation-duration:{d:.2f}s; animation-delay:{dl:.2f}s;"></span>'
-        for t, l, d, dl in zip(met_tops, met_lefts, met_durs, met_delays)
-    )
-
-    html = f"""
-    <style>
-      /* Container covers the whole app */
-      #starry-sky {{
-        position: fixed;
-        inset: 0;
-        z-index: 1;                 /* above background, below content click */
-        pointer-events: none;       /* don't block clicks */
-        overflow: hidden;
-      }}
-      .star {{
-        position: absolute;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0) 70%);
-        box-shadow: 0 0 6px rgba(255,255,255,0.9);
-        opacity: 0.75;
-        animation-name: twinkle;
-        animation-timing-function: ease-in-out;
-        animation-iteration-count: infinite;
-        will-change: transform, opacity;
-      }}
-      @keyframes twinkle {{
-        0%   {{ transform: scale(1);   opacity: .55; }}
-        50%  {{ transform: scale(1.3); opacity: 1;   }}
-        100% {{ transform: scale(1);   opacity: .6;  }}
-      }}
-
-      .meteor {{
-        position: absolute;
-        width: 170px;                        /* length of trail */
-        height: 2px;
-        background: linear-gradient(90deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.0) 80%);
-        transform: rotate(-20deg);
-        filter: drop-shadow(0 0 6px rgba(255,255,255,0.85));
-        opacity: 0;
-        animation-name: shoot;
-        animation-timing-function: linear;
-        animation-iteration-count: infinite;
-        will-change: transform, opacity;
-      }}
-      @keyframes shoot {{
-        0%   {{ transform: translate(0,0) rotate(-20deg); opacity: 0; }}
-        5%   {{ opacity: 1; }}
-        100% {{ transform: translate(-130vw, 45vh) rotate(-20deg); opacity: 0; }}
-      }}
-
-      /* Keep Streamlit content above the sky but clickable */
-      .stApp > div:first-child {{ position: relative; z-index: 2; }}
-    </style>
-    <div id="starry-sky">
-      {stars_html}
-      {meteors_html}
-    </div>
-    """
-    st.markdown(html, unsafe_allow_html=True)
-
-# Render decorative sky
-render_starry_sky(n_stars=170, n_meteors=7, seed=7)
 
 # ------------------ Data Load & Clean (Primary) ------------------
 @st.cache_data
