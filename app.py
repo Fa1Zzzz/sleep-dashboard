@@ -1,9 +1,10 @@
-# app.py — Final build (primary charts + exact insights text)
+# app.py — Final build (primary charts + exact insights text + starry sky)
 # -----------------------------------------------------------
 # - Loads primary + bundled second dataset (no upload UI)
 # - All charts live under "Visualizations" only
 # - Second dataset quick charts: 1,2,3,5 (no PA vs Quality)
 # - Insights under each chart EXACTLY as provided
+# - Decorative starry night (infinite stars + meteors), no content changes
 
 import streamlit as st
 import pandas as pd
@@ -14,102 +15,96 @@ import os
 # ------------------ Page Setup ------------------
 st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
-# ضعها أعلى الملف بعد الاستيرادات و set_page_config
-
-def add_starry_night():
-    import streamlit as st
-    st.markdown(
-        """
-        <style>
-        /* خلفية ليلية ناعمة */
-        .stApp {
-          background: linear-gradient(180deg,#0A1128 0%, #1A1F36 60%, #0A1128 100%) !important;
-        }
-
-        /* طبقتا نجوم فوق الخلفية (لا تمنع التفاعل) */
-        .stApp::before, .stApp::after {
-          content: "";
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 0;              /* تحت المحتوى */
-          background-repeat: repeat;
-          opacity: .85;
-        }
-
-        /* طبقة أولى نجوم كثيفة ببطء */
-        .stApp::before {
-          background-image:
-            radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,.9) 1px, transparent 1px),
-            radial-gradient(1px 1px at 50px 80px, rgba(255,255,255,.7) 1px, transparent 1px),
-            radial-gradient(1px 1px at 130px 170px, rgba(255,255,255,.8) 1px, transparent 1px),
-            radial-gradient(2px 2px at 90px 120px, rgba(255,255,255,.6) 1px, transparent 1px);
-          background-size: 200px 200px, 300px 300px, 250px 250px, 350px 350px;
-          animation: drift 60s linear infinite;
-        }
-
-        /* طبقة ثانية نجوم أكبر بحركة عكسية لعمق بسيط */
-        .stApp::after {
-          background-image:
-            radial-gradient(2px 2px at 40px 60px, rgba(255,255,255,.7) 1px, transparent 1px),
-            radial-gradient(1px 1px at 100px 140px, rgba(255,255,255,.6) 1px, transparent 1px),
-            radial-gradient(2px 2px at 160px 30px, rgba(255,255,255,.5) 1px, transparent 1px);
-          background-size: 350px 350px, 420px 420px, 300px 300px;
-          animation: drift 120s linear infinite reverse;
-        }
-
-        @keyframes drift {
-          from { transform: translateY(0); }
-          to   { transform: translateY(-2000px); }
-        }
-
-        /* ارفع كل المحتوى فوق طبقة النجوم */
-        .main, [data-testid="stSidebar"], header { position: relative; z-index: 1; }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-# نادِ الدالة بعد set_page_config مباشرة
-add_starry_night()
-
-st.markdown("""
-<style>
-@keyframes twinkle {
-  0% {opacity: 0.6;}
-  50% {opacity: 1;}
-  100% {opacity: 0.6;}
-}
-
-.stars {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: -1;
-}
-
-.star {
-  position: absolute;
-  color: #ffffff88;
-  font-size: 14px;
-  animation: twinkle 2s infinite ease-in-out;
-}
-</style>
-
-<div class="stars">
-    <div class="star" style="top:10%; left:20%;">✦</div>
-    <div class="star" style="top:30%; left:70%; animation-delay:0.4s;">✧</div>
-    <div class="star" style="top:60%; left:40%; animation-delay:1s;">✦</div>
-    <div class="star" style="top:80%; left:10%; animation-delay:0.7s;">✧</div>
-</div>
-
-""", unsafe_allow_html=True)
-
 
 st.title("Sleep Health & Lifestyle Dashboard")
 st.caption("Explore sleep patterns and lifestyle-health factors. Second dataset is bundled and previewed separately.")
+
+# ------------------ Starry Sky (Decoration Only) ------------------
+def render_starry_sky(n_stars: int = 160, n_meteors: int = 6, seed: int = 42):
+    rng = np.random.default_rng(seed)
+    # Random positions/sizes/timings
+    star_tops = rng.uniform(0, 100, n_stars)   # vh
+    star_lefts = rng.uniform(0, 100, n_stars)  # vw
+    star_sizes = rng.uniform(0.8, 2.2, n_stars)  # px
+    star_durs = rng.uniform(2.5, 6.5, n_stars)   # s
+    star_delays = rng.uniform(0, 6, n_stars)     # s
+
+    # Meteors start off-screen to the right and shoot diagonally left-down
+    met_tops = rng.uniform(0, 60, n_meteors)      # vh
+    met_lefts = rng.uniform(110, 180, n_meteors)  # vw (start outside)
+    met_durs = rng.uniform(3.5, 8.0, n_meteors)   # s
+    met_delays = rng.uniform(0, 14, n_meteors)    # s
+
+    # Build HTML
+    stars_html = "\n".join(
+        f'<span class="star" style="top:{t:.2f}vh; left:{l:.2f}vw; width:{s:.2f}px; height:{s:.2f}px; '
+        f'animation-duration:{d:.2f}s; animation-delay:{dl:.2f}s;"></span>'
+        for t, l, s, d, dl in zip(star_tops, star_lefts, star_sizes, star_durs, star_delays)
+    )
+    meteors_html = "\n".join(
+        f'<span class="meteor" style="top:{t:.2f}vh; left:{l:.2f}vw; '
+        f'animation-duration:{d:.2f}s; animation-delay:{dl:.2f}s;"></span>'
+        for t, l, d, dl in zip(met_tops, met_lefts, met_durs, met_delays)
+    )
+
+    html = f"""
+    <style>
+      /* Container covers the whole app */
+      #starry-sky {{
+        position: fixed;
+        inset: 0;
+        z-index: 1;                 /* above background, below content click */
+        pointer-events: none;       /* don't block clicks */
+        overflow: hidden;
+      }}
+      .star {{
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0) 70%);
+        box-shadow: 0 0 6px rgba(255,255,255,0.9);
+        opacity: 0.75;
+        animation-name: twinkle;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+        will-change: transform, opacity;
+      }}
+      @keyframes twinkle {{
+        0%   {{ transform: scale(1);   opacity: .55; }}
+        50%  {{ transform: scale(1.3); opacity: 1;   }}
+        100% {{ transform: scale(1);   opacity: .6;  }}
+      }}
+
+      .meteor {{
+        position: absolute;
+        width: 170px;                        /* length of trail */
+        height: 2px;
+        background: linear-gradient(90deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.0) 80%);
+        transform: rotate(-20deg);
+        filter: drop-shadow(0 0 6px rgba(255,255,255,0.85));
+        opacity: 0;
+        animation-name: shoot;
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+        will-change: transform, opacity;
+      }}
+      @keyframes shoot {{
+        0%   {{ transform: translate(0,0) rotate(-20deg); opacity: 0; }}
+        5%   {{ opacity: 1; }}
+        100% {{ transform: translate(-130vw, 45vh) rotate(-20deg); opacity: 0; }}
+      }}
+
+      /* Keep Streamlit content above the sky but clickable */
+      .stApp > div:first-child {{ position: relative; z-index: 2; }}
+    </style>
+    <div id="starry-sky">
+      {stars_html}
+      {meteors_html}
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
+# Render decorative sky
+render_starry_sky(n_stars=170, n_meteors=7, seed=7)
 
 # ------------------ Data Load & Clean (Primary) ------------------
 @st.cache_data
@@ -530,5 +525,3 @@ with tab_end:
         "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
         "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
-
-
