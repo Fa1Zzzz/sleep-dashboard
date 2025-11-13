@@ -107,7 +107,7 @@ def load_data(path: str) -> pd.DataFrame:
 
     # optional: split blood pressure
     if "Blood Pressure" in df.columns:
-        bp = df["Blood Pressure"].str.extract(r"(?P<Systolic>\\d+)\\s*/\\s*(?P<Diastolic>\\d+)")
+        bp = df["Blood Pressure"].str.extract(r"(?P<Systolic>\d+)\s*/\s*(?P<Diastolic>\d+)")
         df[["Systolic", "Diastolic"]] = bp.astype("float")
 
     # derived flag
@@ -218,6 +218,13 @@ tab_overview, tab_viz, tab_table, tab_second, tab_end = st.tabs(
 # ================== OVERVIEW ==================
 with tab_overview:
     st.subheader("KPIs")
+
+    # --------- النص المضاف كما طلبت ---------
+    st.markdown(
+        "This dashboard analyzes the impact of daily habits on sleep quality using various metrics like Physical Activity, Caffeine Intake, Stress Levels, Age, and Gender.\n\n"
+        "Use the filters to explore how different activities affect your sleep by selecting different genders, activity types."
+    )
+
     k1, k2, k3, k4, k5, k6 = st.columns(6)
     k1.metric("Avg Sleep (h)", f"{fdf['Sleep Duration'].mean():.2f}")
     k2.metric("Avg Quality (0-10)", f"{fdf['Quality of Sleep'].mean():.2f}")
