@@ -216,8 +216,20 @@ tab_overview, tab_viz, tab_table, tab_second, tab_end = st.tabs(
 )
 
 # ================== OVERVIEW ==================
-with tab_overview:
     # >>> NEW TEXT BLOCK <<<
+  with tab_overview:
+    st.subheader("About this Dashboard")
+
+    st.markdown(
+        "This dashboard analyzes the impact of daily habits on sleep quality using various metrics like "
+        "Physical Activity, Caffeine Intake, Stress Levels, Age, and Gender.\n\n"
+        "Use the filters to explore how different activities affect your sleep by selecting different "
+        "genders and activity types."
+    )
+
+    st.subheader("KPIs")
+    ...
+
     st.markdown(
         "This dashboard analyzes the impact of daily habits on sleep quality using various metrics like "
         "Physical Activity, Caffeine Intake, Stress Levels, Age, and Gender.\n\n"
@@ -507,3 +519,4 @@ with tab_end:
         "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
         "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
+
