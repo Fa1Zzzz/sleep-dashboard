@@ -20,7 +20,7 @@ st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
 def render_night_sky(star_count: int = 230, seed: int = 7):
     """
     Renders a calm blue night-sky background with randomly placed twinkling stars,
-    behind the entire Streamlit app. Adds a soft crescent moon in the top-right corner.
+    behind the entire Streamlit app. Adds a soft crescent moon in the top-right area.
     """
     random.seed(seed)
 
@@ -61,22 +61,36 @@ def render_night_sky(star_count: int = 230, seed: int = 7):
         50%      { opacity: 1; transform: scale(1.08); }
       }
 
-      /* ----------------- Crescent Moon (Top-Right Corner) ----------------- */
+      /* ----------------- Crescent Moon (Top-Right, opening to the left) ----------------- */
       #crescentMoon {
         position: fixed;
-        top: 20px;
-        right: 25px;
+        top: 80px;           /* نزلناه شوي لتحت */
+        right: 35px;         /* يمين الشاشة */
         width: 70px;
         height: 70px;
         border-radius: 50%;
-        background: radial-gradient(circle at 30% 30%, #ffffff 0%, #e9e9e9 55%, #c9c9c9 100%);
-        box-shadow: 0 0 18px rgba(255,255,255,0.55);
+        background: radial-gradient(circle at 30% 30%, #ffffff 0%, #f4f4f4 45%, #d2d2d2 100%);
+        box-shadow: 0 0 20px rgba(255,255,255,0.65);
         pointer-events: none;
         z-index: 0;
+        animation: moonFloat 6s ease-in-out infinite;
+      }
 
-        /* Create crescent shape by masking */
-        mask: radial-gradient(circle at 45px 25px, transparent 55%, black 56%);
-        -webkit-mask: radial-gradient(circle at 45px 25px, transparent 55%, black 56%);
+      /* القصّة من اليمين عشان الفتحة تكون لليسار */
+      #crescentMoon::after {
+        content: "";
+        position: absolute;
+        top: 10px;
+        right: 4px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #081428;  /* نفس لون السماء تقريبا */
+      }
+
+      @keyframes moonFloat {
+        0%, 100% { transform: translateY(0); box-shadow: 0 0 16px rgba(255,255,255,0.55); }
+        50%      { transform: translateY(4px); box-shadow: 0 0 24px rgba(255,255,255,0.8); }
       }
     </style>
     """
