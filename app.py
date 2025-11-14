@@ -10,52 +10,80 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import os
-import random  # <-- NEW
+import random  # for stars
 
 # ------------------ Page Setup ------------------
 st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
 
-# ------------------ Night-sky Background (Full-page) ------------------
+# ------------------ Night-sky Background (Full-page + Crescent Moon) ------------------
 def render_night_sky(star_count: int = 230, seed: int = 7):
     """
     Renders a calm blue night-sky background with randomly placed twinkling stars,
-    behind the entire Streamlit app. Does not affect any charts or layout.
+    behind the entire Streamlit app. Adds a soft crescent moon in the top-right corner.
     """
     random.seed(seed)
 
-    # Base styles (background + stacking so content stays clickable)
     css = """
     <style>
       .stApp {
         background: radial-gradient(110% 140% at 50% 100%, #0b1f3c 0%, #0a1a33 45%, #081428 100%) !important;
       }
-      /* Ensure main content stays above the star layer */
-      [data-testid="stAppViewContainer"] .main, [data-testid="stSidebar"] {
-        position: relative; z-index: 1;
+
+      /* Ensure main content stays above the star + moon layer */
+      [data-testid="stAppViewContainer"] .main,
+      [data-testid="stSidebar"] {
+        position: relative;
+        z-index: 1;
       }
+
       /* Star field container fixed to the viewport */
       #starfield {
-        position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
       }
+
       .star {
-        position: absolute; border-radius: 50%;
+        position: absolute;
+        border-radius: 50%;
         background: rgba(255,255,255,0.95);
         box-shadow: 0 0 6px rgba(255,255,255,0.85);
-        /* Subtle twinkle */
         animation-name: twinkle;
         animation-iteration-count: infinite;
         animation-timing-function: ease-in-out;
       }
+
       @keyframes twinkle {
         0%, 100% { opacity: var(--op-min, 0.55); transform: scale(1); }
         50%      { opacity: 1; transform: scale(1.08); }
       }
+
+      /* ----------------- Crescent Moon (Top-Right Corner) ----------------- */
+      #crescentMoon {
+        position: fixed;
+        top: 20px;
+        right: 25px;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, #ffffff 0%, #e9e9e9 55%, #c9c9c9 100%);
+        box-shadow: 0 0 18px rgba(255,255,255,0.55);
+        pointer-events: none;
+        z-index: 0;
+
+        /* Create crescent shape by masking */
+        mask: radial-gradient(circle at 45px 25px, transparent 55%, black 56%);
+        -webkit-mask: radial-gradient(circle at 45px 25px, transparent 55%, black 56%);
+      }
     </style>
     """
+
     st.markdown(css, unsafe_allow_html=True)
 
-    # Build star elements with randomized size/position/animation
+    # ----- stars -----
     stars_html_parts = []
     for _ in range(star_count):
         top_vh = f"{random.uniform(0, 100):.3f}vh"
@@ -71,8 +99,12 @@ def render_night_sky(star_count: int = 230, seed: int = 7):
             f'animation-duration:{dur_s};animation-delay:{delay_s};'
             f'--op-min:{op_min};"></span>'
         )
+
     field_html = f'<div id="starfield">{"".join(stars_html_parts)}</div>'
-    st.markdown(field_html, unsafe_allow_html=True)
+    moon_html = '<div id="crescentMoon"></div>'
+
+    # render both
+    st.markdown(field_html + moon_html, unsafe_allow_html=True)
 
 # Render the background before any visible content
 render_night_sky()
@@ -184,27 +216,33 @@ st.sidebar.header("Filters (Primary)")
 age_min, age_max = int(df["Age"].min()), int(df["Age"].max())
 age_range = st.sidebar.slider("Age Range", age_min, age_max, (age_min, age_max), step=1)
 
-gender_sel = st.sidebar.multiselect("Gender",
+gender_sel = st.sidebar.multiselect(
+    "Gender",
     options=sorted(df["Gender"].dropna().unique().tolist()),
-    default=sorted(df["Gender"].dropna().unique().tolist()))
+    default=sorted(df["Gender"].dropna().unique().tolist())
+)
 
-occ_sel = st.sidebar.multiselect("Occupation",
+occ_sel = st.sidebar.multiselect(
+    "Occupation",
     options=sorted(df["Occupation"].dropna().unique().tolist()),
-    default=sorted(df["Occupation"].dropna().unique().tolist()))
+    default=sorted(df["Occupation"].dropna().unique().tolist())
+)
 
 bmi_options = sorted(df["BMI Category"].dropna().unique().tolist()) if "BMI Category" in df.columns else []
 bmi_sel = st.sidebar.multiselect("BMI Category", options=bmi_options, default=bmi_options)
 
-disorder_sel = st.sidebar.multiselect("Sleep Disorder",
+disorder_sel = st.sidebar.multiselect(
+    "Sleep Disorder",
     options=sorted(df["Sleep Disorder"].dropna().unique().tolist()),
-    default=sorted(df["Sleep Disorder"].dropna().unique().tolist()))
+    default=sorted(df["Sleep Disorder"].dropna().unique().tolist())
+)
 
 # Apply filters (Primary)
 fdf = df[
     df["Age"].between(age_range[0], age_range[1]) &
     df["Gender"].isin(gender_sel) &
     df["Occupation"].isin(occ_sel) &
-    ((df["BMI Category"].isin(bmi_sel)) if ("BMI Category" in df.columns and len(bmi_sel)>0) else True) &
+    ((df["BMI Category"].isin(bmi_sel)) if ("BMI Category" in df.columns and len(bmi_sel) > 0) else True) &
     df["Sleep Disorder"].isin(disorder_sel)
 ].copy()
 
@@ -232,7 +270,7 @@ with tab_overview:
     k3.metric("Avg Stress (0-10)", f"{fdf['Stress Level'].mean():.2f}")
     k4.metric("Avg Activity", f"{fdf['Physical Activity Level'].mean():.2f}")
     k5.metric("Avg Heart Rate", f"{fdf['Heart Rate'].mean():.1f}")
-    k6.metric("Sleep Disorders %", f"{(fdf['Sleep Disorder'].ne('None').mean()*100):.1f}%")
+    k6.metric("Sleep Disorders %", f"{(fdf['Sleep Disorder'].ne('None').mean() * 100):.1f}%")
 
     st.markdown("---")
     st.subheader("Demographics")
@@ -247,8 +285,10 @@ with tab_overview:
                         use_container_width=True)
 
     st.markdown("**Top Occupations**")
-    occ_counts = (fdf["Occupation"].value_counts().head(15)
-                  .rename_axis("Occupation").reset_index(name="Count"))
+    occ_counts = (
+        fdf["Occupation"].value_counts().head(15)
+        .rename_axis("Occupation").reset_index(name="Count")
+    )
     st.plotly_chart(px.bar(occ_counts, x="Occupation", y="Count", text="Count"),
                     use_container_width=True)
 
@@ -297,7 +337,7 @@ with tab_viz:
         fig2 = px.scatter(
             fdf, x="Sleep Duration", y="Quality of Sleep",
             color="Gender",
-            hover_data=[c for c in ["Age","Occupation","BMI Category","Sleep Disorder"] if c in fdf.columns],
+            hover_data=[c for c in ["Age", "Occupation", "BMI Category", "Sleep Disorder"] if c in fdf.columns],
             trendline="ols"
         )
         st.plotly_chart(fig2, use_container_width=True)
@@ -314,7 +354,7 @@ with tab_viz:
         fig3 = px.scatter(
             fdf, x="Age", y="Sleep Duration",
             color="Gender",
-            hover_data=[c for c in ["Occupation","BMI Category"] if c in fdf.columns]
+            hover_data=[c for c in ["Occupation", "BMI Category"] if c in fdf.columns]
         )
         st.plotly_chart(fig3, use_container_width=True)
         st.markdown(
@@ -326,12 +366,13 @@ with tab_viz:
 
     c3, c4 = st.columns(2)
     with c3:
-        # 4) Physical Activity vs Sleep Quality  (PRIMARY — kept)
+        # 4) Physical Activity vs Sleep Quality
         st.markdown("**Physical Activity vs Sleep Quality**")
         fig4 = px.scatter(
             fdf, x="Physical Activity Level", y="Quality of Sleep",
             color="Gender",
-            hover_data=[c for c in ["Age","BMI Category"] if c in fdf.columns], trendline="ols"
+            hover_data=[c for c in ["Age", "BMI Category"] if c in fdf.columns],
+            trendline="ols"
         )
         st.plotly_chart(fig4, use_container_width=True)
         st.markdown(
@@ -347,7 +388,8 @@ with tab_viz:
         fig5 = px.scatter(
             fdf, x="Stress Level", y="Sleep Duration",
             color="Gender",
-            hover_data=[c for c in ["Age","BMI Category"] if c in fdf.columns], trendline="ols"
+            hover_data=[c for c in ["Age", "BMI Category"] if c in fdf.columns],
+            trendline="ols"
         )
         st.plotly_chart(fig5, use_container_width=True)
         st.markdown(
@@ -373,8 +415,9 @@ with tab_viz:
     # ---------- Requested Quick Charts (Second Dataset) ----------
     st.markdown("---")
     st.subheader("Requested Quick Charts (Second Dataset)")
-    def _has(df, cols):
-        return isinstance(df, pd.DataFrame) and not df.empty and all(c in df.columns for c in cols)
+
+    def _has(df_, cols):
+        return isinstance(df_, pd.DataFrame) and not df_.empty and all(c in df_.columns for c in cols)
 
     if second_df.empty:
         st.warning("⚠️ 'student_sleep_patterns.csv' not found next to app.py.")
@@ -384,8 +427,10 @@ with tab_viz:
         if _has(second_df, ["Sleep Duration", "Study Hours"]):
             tmp = second_df.copy()
             color_col = "Gender" if "Gender" in tmp.columns else None
-            fig_sd = px.scatter(tmp, x="Study Hours", y="Sleep Duration", color=color_col, trendline="ols",
-                                hover_data=[c for c in ["Age","University Year"] if c in tmp.columns])
+            fig_sd = px.scatter(
+                tmp, x="Study Hours", y="Sleep Duration", color=color_col, trendline="ols",
+                hover_data=[c for c in ["Age", "University Year"] if c in tmp.columns]
+            )
             st.plotly_chart(fig_sd, use_container_width=True)
             st.markdown(
                 "Sleep Duration vs Study Hours\n"
@@ -432,12 +477,12 @@ with tab_viz:
 
         # (5) Sleep Start and End Times — Weekdays vs Weekends
         st.markdown("**5) Sleep Start and End Times — Weekdays vs Weekends**")
-        wk_set = {"Weekday_Sleep_Start","Weekend_Sleep_Start","Weekday_Sleep_End","Weekend_Sleep_End"}
+        wk_set = {"Weekday_Sleep_Start", "Weekend_Sleep_Start", "Weekday_Sleep_End", "Weekend_Sleep_End"}
         if wk_set.issubset(set(second_df.columns)) and bool(second_df["_Agg_Time_ready"].iloc[0]):
             tmp = second_df.copy()
             agg = pd.DataFrame({
-                "Day Type": ["Weekday","Weekend","Weekday","Weekend"],
-                "Metric":  ["Sleep Start","Sleep Start","Sleep End","Sleep End"],
+                "Day Type": ["Weekday", "Weekend", "Weekday", "Weekend"],
+                "Metric":  ["Sleep Start", "Sleep Start", "Sleep End", "Sleep End"],
                 "Minutes": [
                     tmp["_W_Start_m"].mean(skipna=True),
                     tmp["_WE_Start_m"].mean(skipna=True),
@@ -462,10 +507,12 @@ with tab_viz:
 with tab_table:
     st.subheader("Filtered Data (Primary)")
     st.dataframe(fdf, use_container_width=True)
-    st.download_button("Download filtered CSV",
-                       fdf.to_csv(index=False).encode("utf-8"),
-                       file_name="filtered_sleep_data.csv",
-                       mime="text/csv")
+    st.download_button(
+        "Download filtered CSV",
+        fdf.to_csv(index=False).encode("utf-8"),
+        file_name="filtered_sleep_data.csv",
+        mime="text/csv"
+    )
 
 # ================== SECOND DATASET (Preview only) ==================
 with tab_second:
@@ -473,7 +520,7 @@ with tab_second:
     if second_df.empty:
         st.warning("Could not find 'student_sleep_patterns.csv'. Place it next to app.py and rerun.")
     else:
-        c1, c2 = st.columns([2,1])
+        c1, c2 = st.columns([2, 1])
         with c1:
             st.markdown("**Preview (first 200 rows)**")
             st.dataframe(second_df.head(200), use_container_width=True)
@@ -482,8 +529,8 @@ with tab_second:
             st.write(second_df.shape)
             st.markdown("**Columns & dtypes**")
             st.write(pd.DataFrame({
-                'column': second_df.columns,
-                'dtype': [str(t) for t in second_df.dtypes]
+                "column": second_df.columns,
+                "dtype": [str(t) for t in second_df.dtypes]
             }))
 
 # ================== CONCLUSION ==================
