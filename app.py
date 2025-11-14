@@ -17,11 +17,10 @@ st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
 
 # ------------------ Night-sky Background (Full-page + SVG Crescent Moon) ------------------
-def render_night_sky(star_count: int = 230, seed: int = 7):
+def def render_night_sky(star_count: int = 230, seed: int = 7):
     """
-    Renders a calm blue night-sky background with randomly placed twinkling stars,
-    behind the entire Streamlit app. Adds a textured crescent moon (opening to the left)
-    in the upper-right area with a soft glow and subtle floating animation.
+    Night-sky background مع نجوم + هلال فاتح (فاتح على اليسار)
+    بدون SVG عشان ما يطلع ككتابة في Streamlit.
     """
     random.seed(seed)
 
@@ -31,14 +30,12 @@ def render_night_sky(star_count: int = 230, seed: int = 7):
         background: radial-gradient(110% 140% at 50% 100%, #0b1f3c 0%, #0a1a33 45%, #081428 100%) !important;
       }
 
-      /* Ensure main content stays above the star + moon layer */
       [data-testid="stAppViewContainer"] .main,
       [data-testid="stSidebar"] {
         position: relative;
         z-index: 1;
       }
 
-      /* Star field container fixed to the viewport */
       #starfield {
         position: fixed;
         inset: 0;
@@ -62,11 +59,11 @@ def render_night_sky(star_count: int = 230, seed: int = 7):
         50%      { opacity: 1; transform: scale(1.08); }
       }
 
-      /* ----------------- Crescent Moon Wrapper (Top-Right, opening to the left) ----------------- */
+      /* هلال بدون SVG */
       #crescentMoon {
         position: fixed;
-        top: 80px;          /* نازل شوي عن أعلى الصفحة */
-        right: 35px;        /* يمين */
+        top: 80px;
+        right: 35px;
         width: 90px;
         height: 90px;
         pointer-events: none;
@@ -74,10 +71,29 @@ def render_night_sky(star_count: int = 230, seed: int = 7):
         animation: moonFloat 7s ease-in-out infinite;
       }
 
-      #crescentMoon svg {
+      #crescentMoon .moon {
+        position: relative;
         width: 100%;
         height: 100%;
-        display: block;
+        border-radius: 50%;
+        background: #fffdf7;
+        box-shadow: 0 0 18px rgba(255,255,255,0.8);
+        overflow: hidden;
+      }
+
+      /* الجزء المظلم يقطع الدائرة ويخليها هلال فاتح على اليسار */
+      #crescentMoon .moon::before {
+        content: "";
+        position: absolute;
+        right: -18px;   /* يفتح الهلال لليسار */
+        top: 8px;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: #0a1a33;
+        box-shadow:
+          -5px 4px 0 rgba(255,255,255,0.15),
+          -10px 10px 0 rgba(255,255,255,0.08);
       }
 
       @keyframes moonFloat {
@@ -88,6 +104,35 @@ def render_night_sky(star_count: int = 230, seed: int = 7):
     """
 
     st.markdown(css, unsafe_allow_html=True)
+
+    # نجوم
+    stars_html_parts = []
+    for _ in range(star_count):
+        top_vh = f"{random.uniform(0, 100):.3f}vh"
+        left_vw = f"{random.uniform(0, 100):.3f}vw"
+        size_px = f"{random.choice([1, 1, 1, 2, 2, 3])}px"
+        dur_s = f"{random.uniform(1.8, 4.6):.2f}s"
+        delay_s = f"{random.uniform(0, 3.0):.2f}s"
+        op_min = f"{random.uniform(0.35, 0.75):.2f}"
+
+        stars_html_parts.append(
+            f'<span class="star" style="top:{top_vh};left:{left_vw};'
+            f'width:{size_px};height:{size_px};'
+            f'animation-duration:{dur_s};animation-delay:{delay_s};'
+            f'--op-min:{op_min};"></span>'
+        )
+
+    field_html = f'<div id="starfield">{"".join(stars_html_parts)}</div>'
+
+    moon_html = """
+    <div id="crescentMoon">
+      <div class="moon"></div>
+    </div>
+    """
+
+    st.markdown(field_html + moon_html, unsafe_allow_html=True)
+
+
 
     # ----- stars -----
     stars_html_parts = []
@@ -610,3 +655,4 @@ with tab_end:
         "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
         "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
+
