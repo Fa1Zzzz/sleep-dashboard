@@ -217,13 +217,14 @@ tab_overview, tab_viz, tab_table, tab_second, tab_end = st.tabs(
 
 # ================== OVERVIEW ==================
 with tab_overview:
-    st.subheader("KPIs")
+    st.subheader("Overview")
 
-    # --------- النص المضاف كما طلبت ---------
     st.markdown(
         "This dashboard analyzes the impact of daily habits on sleep quality using various metrics like Physical Activity, Caffeine Intake, Stress Levels, Age, and Gender.\n\n"
         "Use the filters to explore how different activities affect your sleep by selecting different genders, activity types."
     )
+
+    st.subheader("KPIs")
 
     k1, k2, k3, k4, k5, k6 = st.columns(6)
     k1.metric("Avg Sleep (h)", f"{fdf['Sleep Duration'].mean():.2f}")
