@@ -16,11 +16,12 @@ import random  # for stars
 st.set_page_config(page_title="Sleep Health & Lifestyle Dashboard",
                    page_icon="😴", layout="wide")
 
-# ------------------ Night-sky Background (Full-page + Crescent Moon) ------------------
+# ------------------ Night-sky Background (Full-page + SVG Crescent Moon) ------------------
 def render_night_sky(star_count: int = 230, seed: int = 7):
     """
     Renders a calm blue night-sky background with randomly placed twinkling stars,
-    behind the entire Streamlit app. Adds a soft crescent moon in the top-right area.
+    behind the entire Streamlit app. Adds a textured crescent moon (opening to the left)
+    in the upper-right area with a soft glow and subtle floating animation.
     """
     random.seed(seed)
 
@@ -61,36 +62,27 @@ def render_night_sky(star_count: int = 230, seed: int = 7):
         50%      { opacity: 1; transform: scale(1.08); }
       }
 
-      /* ----------------- Crescent Moon (Top-Right, opening to the left) ----------------- */
+      /* ----------------- Crescent Moon Wrapper (Top-Right, opening to the left) ----------------- */
       #crescentMoon {
         position: fixed;
-        top: 80px;           /* نزلناه شوي لتحت */
-        right: 35px;         /* يمين الشاشة */
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
-        background: radial-gradient(circle at 30% 30%, #ffffff 0%, #f4f4f4 45%, #d2d2d2 100%);
-        box-shadow: 0 0 20px rgba(255,255,255,0.65);
+        top: 80px;          /* نازل شوي عن أعلى الصفحة */
+        right: 35px;        /* يمين */
+        width: 90px;
+        height: 90px;
         pointer-events: none;
         z-index: 0;
-        animation: moonFloat 6s ease-in-out infinite;
+        animation: moonFloat 7s ease-in-out infinite;
       }
 
-      /* القصّة من اليمين عشان الفتحة تكون لليسار */
-      #crescentMoon::after {
-        content: "";
-        position: absolute;
-        top: 10px;
-        right: 4px;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: #081428;  /* نفس لون السماء تقريبا */
+      #crescentMoon svg {
+        width: 100%;
+        height: 100%;
+        display: block;
       }
 
       @keyframes moonFloat {
-        0%, 100% { transform: translateY(0); box-shadow: 0 0 16px rgba(255,255,255,0.55); }
-        50%      { transform: translateY(4px); box-shadow: 0 0 24px rgba(255,255,255,0.8); }
+        0%, 100% { transform: translateY(0); }
+        50%      { transform: translateY(4px); }
       }
     </style>
     """
@@ -115,9 +107,59 @@ def render_night_sky(star_count: int = 230, seed: int = 7):
         )
 
     field_html = f'<div id="starfield">{"".join(stars_html_parts)}</div>'
-    moon_html = '<div id="crescentMoon"></div>'
 
-    # render both
+    # ----- SVG crescent moon with slight bumps / texture -----
+    moon_html = """
+    <div id="crescentMoon">
+      <svg viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="moonGlow">
+            <feGaussianBlur stdDeviation="2.8" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <!-- outer crescent with نتوءات بسيطة -->
+        <path
+          d="M70 8
+             C 50 5, 32 15, 23 30
+             C 15 45, 16 60, 25 73
+             C 33 84, 48 88, 63 83
+             C 55 80, 49 73, 46 66
+             C 42 58, 41 49, 43 41
+             C 46 30, 53 22, 62 17
+             C 66 15, 69 12, 70 8 Z"
+          fill="#fffdf7"
+          filter="url(#moonGlow)"
+        />
+
+        <!-- inner darker side لإعطاء إحساس عمق -->
+        <path
+          d="M64 15
+             C 54 18, 47 25, 44 35
+             C 41 44, 42 55, 47 65
+             C 50 71, 55 76, 61 79
+             C 51 78, 43 72, 38 64
+             C 32 55, 31 44, 34 35
+             C 38 24, 47 17, 58 14 Z"
+          fill="#e7e7e7"
+          opacity="0.7"
+        />
+
+        <!-- small craters / bumps for texture -->
+        <circle cx="53" cy="26" r="2.2" fill="#f0f0f0" opacity="0.9"/>
+        <circle cx="57" cy="37" r="1.7" fill="#f5f5f5" opacity="0.85"/>
+        <circle cx="50" cy="47" r="1.9" fill="#f3f3f3" opacity="0.9"/>
+        <circle cx="56" cy="58" r="2.0" fill="#f2f2f2" opacity="0.85"/>
+        <circle cx="49" cy="66" r="1.6" fill="#f6f6f6" opacity="0.9"/>
+      </svg>
+    </div>
+    """
+
+    # render stars + moon
     st.markdown(field_html + moon_html, unsafe_allow_html=True)
 
 # Render the background before any visible content
