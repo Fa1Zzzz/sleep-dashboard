@@ -1,10 +1,5 @@
-# app.py — Final build (primary charts + exact insights text)
+# app.py — Final build 
 # -----------------------------------------------------------
-# - Loads primary + bundled second dataset (no upload UI)
-# - All charts live under "Visualizations" only
-# - Second dataset quick charts: 1,2,3,5 (no PA vs Quality)
-# - Insights under each chart EXACTLY as provided
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -220,10 +215,8 @@ with tab_overview:
     # --------- NEW TITLE + TEXT (ADDED) ---------
     st.subheader("About this Dashboard")
     st.markdown(
-        "This dashboard analyzes the impact of daily habits on sleep quality using various metrics like "
-        "Physical Activity, Caffeine Intake, Stress Levels, Age, and Gender.\n\n"
-        "Use the filters to explore how different activities affect your sleep by selecting different "
-        "genders and activity types."
+        "- This dashboard analyzes the impact of daily habits on sleep quality using various metrics like Physical Activity, Caffeine Intake, Stress Levels, Age, and Gender.\n\n"
+        "- Use the filters to explore how different activities affect your sleep by selecting different genders and activity types."
     )
     # -------------------------------------------
 
@@ -509,3 +502,4 @@ with tab_end:
         "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
         "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
+
