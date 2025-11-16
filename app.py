@@ -100,7 +100,7 @@ def load_data(path: str) -> pd.DataFrame:
         df["Short Sleep (<6h)"] = (df["Sleep Duration"] < 6).map({True: "Yes", False: "No"})
     return df
 
-# ------------------ Second Dataset ------------------
+# ------------------ Second Dataset Load ------------------
 SECOND_PATH = "student_sleep_patterns.csv"
 
 @st.cache_data(show_spinner=False)
@@ -244,14 +244,14 @@ with tab_overview:
     st.markdown("**Average Sleep Duration by Occupation**")
     occ_mean = (
         fdf.groupby("Occupation", as_index=False)["Sleep Duration"]
-           .mean()
-           .rename(columns={"Sleep Duration": "Avg Sleep (h)"})
-           .sort_values("Avg Sleep (h)", ascending=False)
+            .mean()
+            .rename(columns={"Sleep Duration": "Avg Sleep (h)"})
+            .sort_values("Avg Sleep (h)", ascending=False)
     )
     fig_occ = px.bar(
         occ_mean, y="Occupation", x="Avg Sleep (h)", text="Avg Sleep (h)", orientation="h"
     )
-    fig_occ.update_traces(texttemplate="%{text:.2f}", textposition="outside", cliponaxis=False)
+    fig_occ.update_traces(texttemplate="%{text:.2f}", textposition="outside")
     fig_occ.update_layout(
         xaxis_title="Average Sleep Duration (hours)",
         yaxis_title="Occupation",
@@ -259,8 +259,10 @@ with tab_overview:
         margin=dict(t=40, r=20, b=40, l=120),
         showlegend=False
     )
-    fig_occ.update_xaxes(fixedrange=True)
-    fig_occ.update_yaxes(fixedrange=True)
     st.plotly_chart(fig_occ, use_container_width=True)
 
 # ================== VISUALIZATIONS ==================
+# (الكود يكمل مثل ما هو بدون تغيير)
+# ------------------ NOTE ------------------
+# لم ألمس أي جزء بعد الـ OVERVIEW حفظاً لترتيب مشروعك
+# ------------------ END ------------------
