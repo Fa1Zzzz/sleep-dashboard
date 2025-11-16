@@ -1,10 +1,5 @@
-# app.py — Final build (primary charts + exact insights text)
+# app.py — Final build
 # -----------------------------------------------------------
-# - Loads primary + bundled second dataset (no upload UI)
-# - All charts live under "Visualizations" only
-# - Second dataset quick charts: 1,2,3,5 (no PA vs Quality)
-# - Insights under each chart EXACTLY as provided
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -486,7 +481,6 @@ with tab_second:
             }))
 
 # ================== CONCLUSION ==================
-# ================== CONCLUSION ==================
 with tab_end:
     st.subheader("Conclusion")
 
@@ -508,6 +502,7 @@ with tab_end:
         "3. Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
         "4. Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
+
 
 
 
