@@ -501,9 +501,10 @@ with tab_end:
         "* Stress Level and Sleep Duration:\n"
         "Higher stress levels are linked to shorter sleep durations.\n\n"
         "**Recommendations:**\n"
-        "1- Promote Better Time Management: Encourage students to balance study and sleep"
-        "2- Monitor Caffeine Intake: Educate students, especially females, on caffeine’s impact on sleep."
-        "3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality."
-        "4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
+        "* 1- Promote Better Time Management: Encourage students to balance study and sleep"
+        "* 2- Monitor Caffeine Intake: Educate students, especially females, on caffeine’s impact on sleep."
+        "* 3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality."
+        "* 4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
     )
+
 
