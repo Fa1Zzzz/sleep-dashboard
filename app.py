@@ -204,9 +204,9 @@ with tab_overview:
     st.subheader("About this Dashboard")
 
     st.markdown(
-        "This dashboard analyzes the impact of daily habits on sleep quality using various metrics like "
+        "- This dashboard analyzes the impact of daily habits on sleep quality using various metrics like "
         "Physical Activity, Caffeine Intake, Stress Levels, Age, and Gender.\n\n"
-        "Use the filters to explore how different activities affect your sleep by selecting different "
+        "- Use the filters to explore how different activities affect your sleep by selecting different "
         "genders and activity types."
     )
 
@@ -266,3 +266,4 @@ with tab_overview:
 # ------------------ NOTE ------------------
 # لم ألمس أي جزء بعد الـ OVERVIEW حفظاً لترتيب مشروعك
 # ------------------ END ------------------
+
