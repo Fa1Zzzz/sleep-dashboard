@@ -486,25 +486,28 @@ with tab_second:
             }))
 
 # ================== CONCLUSION ==================
+# ================== CONCLUSION ==================
 with tab_end:
     st.subheader("Conclusion")
+
+    # --- Key Conclusions ---
+    st.markdown("**Key Conclusions:**")
     st.markdown(
-        "**Key Conclusions:**\n"
-        "* Study Hours and Sleep Duration:\n"
-        "A weak negative correlation exists. More study hours slightly reduce sleep duration.\n\n"
-        "* Caffeine Intake and Sleep Duration:\n"
-        "Males tend to sleep longer with higher caffeine intake, while females sleep less as caffeine intake increases.\n"
-        "* Physical Activity and Sleep Quality:\n"
-        "Physical activity improves sleep quality, especially for females.\n"
-        "* Age and Sleep Duration:\n"
-        "No clear correlation between age and sleep duration.\n"
-        "* Stress Level and Sleep Duration:\n"
-        "Higher stress levels are linked to shorter sleep durations.\n\n"
-        "**Recommendations:**\n"
-        "* 1- Promote Better Time Management: Encourage students to balance study and sleep"
-        "* 2- Monitor Caffeine Intake: Educate students, especially females, on caffeine’s impact on sleep."
-        "* 3- Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality."
-        "* 4- Implement Stress Management Programs: Help students manage stress to improve sleep duration."
+        "- **Study Hours and Sleep Duration:** A weak negative correlation exists. More study hours slightly reduce sleep duration.\n"
+        "- **Caffeine Intake and Sleep Duration:** Males tend to sleep longer with higher caffeine intake, while females sleep less as caffeine intake increases.\n"
+        "- **Physical Activity and Sleep Quality:** Physical activity improves sleep quality, especially for females.\n"
+        "- **Age and Sleep Duration:** No clear correlation between age and sleep duration.\n"
+        "- **Stress Level and Sleep Duration:** Higher stress levels are linked to shorter sleep durations."
     )
+
+    # --- Recommendations ---
+    st.markdown("**Recommendations:**")
+    st.markdown(
+        "1. Promote Better Time Management: Encourage students to balance study and sleep.\n"
+        "2. Monitor Caffeine Intake: Educate students, especially females, on caffeine’s impact on sleep.\n"
+        "3. Encourage Regular Physical Activity: Foster exercise programs to enhance sleep quality.\n"
+        "4. Implement Stress Management Programs: Help students manage stress to improve sleep duration."
+    )
+
 
 
