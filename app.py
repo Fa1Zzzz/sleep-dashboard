@@ -1,10 +1,5 @@
-# app.py — Final build (primary charts + exact insights text)
+# app.py — Final build 
 # -----------------------------------------------------------
-# - Loads primary + bundled second dataset (no upload UI)
-# - All charts live under "Visualizations" only
-# - Second dataset quick charts: 1,2,3,5 (no PA vs Quality)
-# - Insights under each chart EXACTLY as provided
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -262,8 +257,5 @@ with tab_overview:
     st.plotly_chart(fig_occ, use_container_width=True)
 
 # ================== VISUALIZATIONS ==================
-# (الكود يكمل مثل ما هو بدون تغيير)
-# ------------------ NOTE ------------------
-# لم ألمس أي جزء بعد الـ OVERVIEW حفظاً لترتيب مشروعك
-# ------------------ END ------------------
+
 
